@@ -1,0 +1,15 @@
+{
+  "name": "discord-bot",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "author": "YourNameHere",
+  "license": "ISC",
+  "description": "A Discord bot built with discord.js v13",
+  "dependencies": {
+    "discord.js": "^13.17.1",
+    "dotenv": "^17.2.1"
+  }
+}

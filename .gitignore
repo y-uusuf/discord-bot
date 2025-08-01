@@ -1,0 +1,17 @@
+# Node.js dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS / editor-specific files
+.DS_Store
+Thumbs.db
+
+# Optional: ignore VSCode settings if you use it
+.vscode/
