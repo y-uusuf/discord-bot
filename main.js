@@ -3,6 +3,8 @@ const config = require("./config.json");
 const fs = require("fs");
 const path = require("path");
 
+require("dotenv").config()
+
 // Initialize bot
 const client = new Client({
     intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_MEMBERS", "GUILD_PRESENCES", "GUILD_BANS", "MESSAGE_CONTENT"],
@@ -82,4 +84,4 @@ client.on("messageCreate", async message => {
 });
 
 // Login
-client.login(config.token);
+client.login(process.env.DISCORD_TOKEN);
