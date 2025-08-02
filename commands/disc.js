@@ -1,7 +1,7 @@
 const { MessageEmbed } = require("discord.js");
 
 module.exports = {
-  name: "disconnect",
+  name: "disc",
   async execute(client, message, args) {
     if (!message.member.permissions.has("MOVE_MEMBERS")) {
       return message.reply("*you don't have permission to disconnect members.*");
