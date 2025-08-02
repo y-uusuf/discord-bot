@@ -142,7 +142,7 @@ client.on("messageCreate", async (message) => {
   if (afkUser) {
     await AFK.deleteOne({ userID: message.author.id });
 
-    const embed = new EmbedBuilder()
+    const embed = new MessageEmbed()
       .setColor(0x00ff00) // Green color in hex
       .setDescription(
         `**${message.author.username}**, welcome back! I removed your AFK status.`,
