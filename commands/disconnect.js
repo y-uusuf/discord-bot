@@ -7,8 +7,12 @@ module.exports = {
       return message.reply("*you don't have permission to disconnect members.*");
     }
 
-    // Disconnect everyone in voice channels
-    if (args[0]?.toLowerCase() === "all") {
+    if (!args[0]) {
+      return message.reply("*please mention a user, a voice channel, provide an ID, or use `all`.*");
+    }
+
+    // Disconnect everyone in all voice channels
+    if (args[0].toLowerCase() === "all") {
       let disconnected = [];
 
       message.guild.members.cache.forEach(member => {
@@ -23,8 +27,8 @@ module.exports = {
       }
 
       const embed = new MessageEmbed()
-        .setColor("DARK_BUT_NOT_BLACK")
-        .setTitle("disconnected everyone in vc.")
+        .setColor("RED")
+        .setTitle("disconnected everyone in voice channels.")
         .setDescription(disconnected.join("\n"))
         .setFooter({ text: `total disconnected: ${disconnected.length} | by ${message.author.tag}` })
         .setTimestamp();
@@ -32,13 +36,35 @@ module.exports = {
       return message.channel.send({ embeds: [embed] });
     }
 
-    // Disconnect single user
-    const target =
-      message.mentions.members.first() ||
-      message.guild.members.cache.get(args[0]);
+    // Disconnect everyone in a specific voice channel
+    const channel = message.mentions.channels.first() || message.guild.channels.cache.get(args[0]);
+    if (channel && channel.type === "GUILD_VOICE") {
+      let disconnected = [];
+
+      channel.members.forEach(member => {
+        member.voice.disconnect().catch(() => null);
+        disconnected.push(`\`${member.user.tag}\``);
+      });
+
+      if (disconnected.length === 0) {
+        return message.reply(`*no one is connected to \`${channel.name}\`.*`);
+      }
+
+      const embed = new MessageEmbed()
+        .setColor("RED")
+        .setTitle(`disconnected everyone in ${channel.name}.`)
+        .setDescription(disconnected.join("\n"))
+        .setFooter({ text: `total disconnected: ${disconnected.length} | by ${message.author.tag}` })
+        .setTimestamp();
+
+      return message.channel.send({ embeds: [embed] });
+    }
+
+    // Disconnect a specific user
+    const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
 
     if (!target) {
-      return message.reply("*please mention a valid user, provide their ID, or use `all`.*");
+      return message.reply("*please mention a valid user or provide their ID.*");
     }
 
     if (!target.voice.channel) {
@@ -58,11 +84,11 @@ module.exports = {
         .setFooter("user has been removed from vc.")
         .setTimestamp();
 
-      message.channel.send({ embeds: [embed] });
+      return message.channel.send({ embeds: [embed] });
 
     } catch (err) {
       console.error(err);
-      message.reply("*i couldn't disconnect the user.*");
+      return message.reply("*i couldn't disconnect the user.*");
     }
   },
 };
