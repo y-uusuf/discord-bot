@@ -8,6 +8,10 @@ module.exports = {
       return message.reply("*sorry, you don't have permission to reload commands.*");
     }
 
+    if (!args.length) {
+      return message.reply("*please, specify a command to reload, like `!reload avatar`.*");
+    }
+
     const commandName = args[0].toLowerCase();
     const commandPath = path.join(__dirname, `${commandName}.js`);
 
