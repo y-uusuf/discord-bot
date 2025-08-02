@@ -8,9 +8,10 @@ module.exports = {
     }
 
     if (!args[0]) {
-      return message.reply("*please mention a user, provide their ID, or use `all`.*");
+      return message.reply("*please mention a user, channel, provide an ID, or use `all`.*");
     }
 
+    // Unmute all members in all voice channels
     if (args[0].toLowerCase() === "all") {
       let unmuted = [];
 
@@ -22,7 +23,7 @@ module.exports = {
       });
 
       if (unmuted.length === 0) {
-        return message.reply("*no one is in a voice channel or everyone is already unmuted.*");
+        return message.reply("*no one is in a voice channel, or everyone is already unmuted.*");
       }
 
       const embed = new MessageEmbed()
@@ -35,7 +36,33 @@ module.exports = {
       return message.channel.send({ embeds: [embed] });
     }
 
-    // Single user unmute
+    // Unmute all in a specific voice channel
+    const channel = message.mentions.channels.first() || message.guild.channels.cache.get(args[0]);
+    if (channel && channel.type === "GUILD_VOICE") {
+      let unmuted = [];
+
+      channel.members.forEach(member => {
+        if (member.voice.serverMute) {
+          member.voice.setMute(false).catch(() => null);
+          unmuted.push(`\`${member.user.tag}\``);
+        }
+      });
+
+      if (unmuted.length === 0) {
+        return message.reply("*no one is muted in that channel.*");
+      }
+
+      const embed = new MessageEmbed()
+        .setColor("DARK_BUT_NOT_BLACK")
+        .setTitle(`unmuted everyone in ${channel.name}`)
+        .setDescription(unmuted.join("\n"))
+        .setFooter({ text: `total unmuted: ${unmuted.length} | by ${message.author.tag}` })
+        .setTimestamp();
+
+      return message.channel.send({ embeds: [embed] });
+    }
+
+    // Unmute a single user
     const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
 
     if (!target) {
@@ -51,7 +78,7 @@ module.exports = {
     }
 
     try {
-      await target.voice.setMute(false, `sucessfully unmuted.`);
+      await target.voice.setMute(false, `Successfully unmuted.`);
 
       const embed = new MessageEmbed()
         .setColor("DARK_BUT_NOT_BLACK")
