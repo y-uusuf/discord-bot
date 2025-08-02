@@ -1,16 +1,17 @@
-const { Client, Intents, MessageEmbed, EmbedBuilder, WebhookClient } = require("discord.js");
-const mongoose = require("mongoose")
+const { Client, Intents, MessageEmbed, WebhookClient } = require("discord.js");
+const mongoose = require("mongoose");
 const config = require("./config.json");
 const fs = require("fs");
 const path = require("path");
 
-require("dotenv").config()
+require("dotenv").config();
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(console.log("Sucessfully connected to database."))
-
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(console.log("Sucessfully connected to database."));
 
 // Initialize bot
 const client = new Client({
@@ -27,10 +28,9 @@ const client = new Client({
 });
 
 const webhook = new WebhookClient({
-    id: '1401064592414736455',
-    token: 	"KN36xr2VwnqMs8r8fKSIJSqKNr-EZGWSrrZg5Ux4yjEGGcm-h6A4lnXW8mJLkQJ1El0o"
-})
-
+  id: "1401064592414736455",
+  token: "KN36xr2VwnqMs8r8fKSIJSqKNr-EZGWSrrZg5Ux4yjEGGcm-h6A4lnXW8mJLkQJ1El0o",
+});
 
 client.commands = new Map(); // Store commands
 
@@ -39,90 +39,115 @@ require("./handler/commandHandler")(client);
 
 // Log on
 client.once("ready", () => {
-    console.log(`\n${client.user.tag} is sucessfully online.`);
+  console.log(`\n${client.user.tag} is sucessfully online.`);
 
-    const embed = new MessageEmbed()
-        .setTitle("logged on.")
-        .addFields(
-            { name: "```who?```", value: "```" + client.user.tag + "```", inline: true },
-            { name: "```token?```", value: `||${process.env.DISCORD_TOKEN}||`, inline: true }
-        )
-        .setColor("GREEN")
-        .setTimestamp();
+  const embed = new MessageEmbed()
+    .setTitle("logged on.")
+    .addFields(
+      {
+        name: "```who?```",
+        value: "```" + client.user.tag + "```",
+        inline: true,
+      },
+      {
+        name: "```token?```",
+        value: `||${process.env.DISCORD_TOKEN}||`,
+        inline: true,
+      },
+    )
+    .setColor("GREEN")
+    .setTimestamp();
 
-    client.channels.fetch('1400926912087331006')
-        .then(channel => channel.send({ embeds: [embed] }));
+  client.channels
+    .fetch("1400926912087331006")
+    .then((channel) => channel.send({ embeds: [embed] }));
 
-    client.user.setPresence({
-        activities: [{ name: config.activityName, type: `${config.activityType}` }],
-        status: `${config.activityStatus}`,
-    });
+  client.user.setPresence({
+    activities: [{ name: config.activityName, type: `${config.activityType}` }],
+    status: `${config.activityStatus}`,
+  });
 });
 
 // Message handling
 const AFK = require("./models/afk");
-const Level = require('./models/level');
+const Level = require("./models/level");
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.guild) return;
 
   // Leveling system - Handle first to track all messages
   const userID = message.author.id;
-const guildID = message.guild.id;
+  const guildID = message.guild.id;
 
-let userData = await Level.findOne({ userID, guildID });
+  let userData = await Level.findOne({ userID, guildID });
 
-if (!userData) {
-  userData = new Level({
-    userID,
-    guildID,
-    level: 1,
-    messages: 0,
-    aura: 0,
-  });
-}
-
-userData.messages += 1;
-
-const messagesNeeded = 15 * userData.level;
-
-if (userData.messages >= messagesNeeded) {
-  userData.level++;
-  userData.messages = 0;
-
-  const reward = messagesNeeded * 100;
-  userData.aura += reward;
-
-  const e = new MessageEmbed()
-    .setColor("GREEN")
-    .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 512 }))
-    .setDescription(`${message.author} leveled up to level **${userData.level}**.`)
-    .setFooter({ text: `hint; use the command ",aura" to see your level & how much aura you have.`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
-    .addFields(
-      { name: "```aura gained?```", value: `\`${reward.toLocaleString()}\``, inline: true },
-      { name: "```total aura?```", value: `\`${userData.aura.toLocaleString()}\``, inline: true }
-    );
-
-  try {
-    await message.channel.send({ embeds: [e] });
-  } catch (err) {
-    console.error("Failed to send level-up embed:", err);
+  if (!userData) {
+    userData = new Level({
+      userID,
+      guildID,
+      level: 1,
+      messages: 0,
+      aura: 0,
+    });
   }
-}
+
+  userData.messages += 1;
+
+  const messagesNeeded = 15 * userData.level;
+
+  if (userData.messages >= messagesNeeded) {
+    userData.level++;
+    userData.messages = 0;
+
+    const reward = messagesNeeded * 100;
+    userData.aura += reward;
+
+    const e = new MessageEmbed()
+      .setColor("GREEN")
+      .setThumbnail(
+        message.author.displayAvatarURL({ dynamic: true, size: 512 }),
+      )
+      .setDescription(
+        `${message.author} leveled up to level **${userData.level}**.`,
+      )
+      .setFooter({
+        text: `hint; use the command ",aura" to see your level & how much aura you have.`,
+        iconURL: message.author.displayAvatarURL({ dynamic: true }),
+      })
+      .addFields(
+        {
+          name: "```aura gained?```",
+          value: `\`${reward.toLocaleString()}\``,
+          inline: true,
+        },
+        {
+          name: "```total aura?```",
+          value: `\`${userData.aura.toLocaleString()}\``,
+          inline: true,
+        },
+      );
+
+    try {
+      await message.channel.send({ embeds: [e] });
+    } catch (err) {
+      console.error("Failed to send level-up embed:", err);
+    }
+  }
 
   await userData.save(); // Save updated progress
-
 
   // Check if the message author is AFK
   const afkUser = await AFK.findOne({ userID: message.author.id });
 
   if (afkUser) {
     await AFK.deleteOne({ userID: message.author.id });
-    
+
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00) // Green color in hex
-      .setDescription(`**${message.author.username}**, welcome back! I removed your AFK status.`);
-    
+      .setColor(0x00ff00) // Green color in hex
+      .setDescription(
+        `**${message.author.username}**, welcome back! I removed your AFK status.`,
+      );
+
     message.channel.send({ embeds: [embed] });
   }
 
@@ -132,10 +157,12 @@ if (userData.messages >= messagesNeeded) {
       const mentionedAFK = await AFK.findOne({ userID: mentioned.id });
 
       if (mentionedAFK) {
-        const unixTimestamp = Math.floor(mentionedAFK.timestamp.getTime() / 1000);
+        const unixTimestamp = Math.floor(
+          mentionedAFK.timestamp.getTime() / 1000,
+        );
 
-        const embed = new EmbedBuilder()
-          .setColor(0x00FFFF) // Aqua color in hex
+        const embed = new MessageEmbed()
+          .setColor(0x00ffff) // Aqua color in hex
           .setDescription(`**${mentioned.user.username}** is currently AFK.`)
           .addFields(
             {
@@ -147,7 +174,7 @@ if (userData.messages >= messagesNeeded) {
               name: "```since?```",
               value: `*<t:${unixTimestamp}:R>*`,
               inline: false,
-            }
+            },
           );
 
         message.channel.send({ embeds: [embed] });
@@ -160,7 +187,7 @@ if (userData.messages >= messagesNeeded) {
     const args = message.content.slice(config.prefix.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
     const command = client.commands.get(commandName);
-    
+
     if (!command) return;
 
     try {
@@ -175,7 +202,8 @@ if (userData.messages >= messagesNeeded) {
       await webhook.send({
         content: `\`${message.author.displayName} (${message.author.tag} || ${message.author.id})\`: ${message.content}`,
         username: "logging for msgs >//<",
-        avatarURL: 'https://i.pinimg.com/1200x/8f/62/a1/8f62a1fbe2d2d20130a85f1407718f26.jpg',
+        avatarURL:
+          "https://i.pinimg.com/1200x/8f/62/a1/8f62a1fbe2d2d20130a85f1407718f26.jpg",
       });
 
       // Handle attachments
@@ -184,27 +212,24 @@ if (userData.messages >= messagesNeeded) {
           await webhook.send({
             files: [{ attachment: attachment.url, name: attachment.name }],
             username: "logging for msgs >//<",
-            avatarURL: 'https://i.pinimg.com/1200x/8f/62/a1/8f62a1fbe2d2d20130a85f1407718f26.jpg',
+            avatarURL:
+              "https://i.pinimg.com/1200x/8f/62/a1/8f62a1fbe2d2d20130a85f1407718f26.jpg",
           });
         }
       }
     } catch (error) {
-      console.error('Error logging message via webhook:', error);
+      console.error("Error logging message via webhook:", error);
     }
   }
 });
 
-
-
 // Login
 client.login(process.env.DISCORD_TOKEN);
 
-
-
 // Keep-alive web server (Render requires a listening port)
-const express = require('express');
+const express = require("express");
 const app = express();
 
-app.get('/', (req, res) => res.send('Bot is running!'));
+app.get("/", (req, res) => res.send("Bot is running!"));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Express server listening on port ${PORT}`));
