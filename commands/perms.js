@@ -6,7 +6,7 @@ module.exports = {
         try {
 
             if (!message.member.permissions.has("MANAGE_ROLES")) {
-                return message.reply("*you don't have permission to jail members.*");
+                return message.reply("*you don't have permission to add image perms to members.*");
             }
 
             const targetUser = message.mentions.members.first() || message.member;
@@ -16,7 +16,7 @@ module.exports = {
             
             if (!role) {
                 const errorEmbed = new MessageEmbed()
-                    .setDescription('*sorry, couldn\'t find the permissions role.*')
+                    .setDescription('*sorry, couldn\'t find the image perms role.*')
                     .setColor('RED');
                 return message.replt({ embeds: [errorEmbed] });
             }
@@ -24,7 +24,7 @@ module.exports = {
             // Check if user already has the role
             if (targetUser.roles.cache.has(role.id)) {
                 const alreadyHasEmbed = new MessageEmbed()
-                    .setDescription(`**${targetUser.user.username}** already has the permissions role.`)
+                    .setDescription(`**${targetUser.user.username}** already has image perms.`)
                     .setColor('YELLOW');
                 return message.reply({ embeds: [alreadyHasEmbed] });
             }
@@ -36,7 +36,7 @@ module.exports = {
             const successEmbed = new MessageEmbed()
                 .setDescription(`**perms added** for **${targetUser.user.username}**.`)
                 .setColor('GREEN')
-                .setThumbnail(targetUser.user.displayAvatarURL({ dynamic: true, size: 512 }));
+                .setFooter({ text: `${message.author.username} has image perms now.`, iconURL: targetUser.user.displayAvatarURL({ dynamic: true })});
 
             message.reply({ embeds: [successEmbed] });
 
