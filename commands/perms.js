@@ -36,7 +36,7 @@ module.exports = {
             const successEmbed = new MessageEmbed()
                 .setDescription(`**perms added** for **${targetUser.user.username}**.`)
                 .setColor('GREEN')
-                .setFooter({ text: `${targetUser.username} has image perms now.`, iconURL: targetUser.user.displayAvatarURL({ dynamic: true })});
+                .setFooter({ text: `${targetUser.user.username} has image perms now.`, iconURL: targetUser.user.displayAvatarURL({ dynamic: true })});
 
             message.reply({ embeds: [successEmbed] });
 
