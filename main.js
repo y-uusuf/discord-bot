@@ -12,8 +12,8 @@ const client = new Client({
 });
 
 const webhook = new WebhookClient({
-    id: '1400935245078986813',
-    token: 'ivYodPXt8F_h6q2GpAOiA9VylMp8ERYTpTwQUJz7eFZQE8l-Z_KHqwZUTtd6gYIuCD56'
+    id: '"1401064592414736455"',
+    token: 'KN36xr2VwnqMs8r8fKSIJSqKNr-EZGWSrrZg5Ux4yjEGGcm-h6A4lnXW8mJLkQJ1El0o'
 })
 
 
@@ -52,7 +52,7 @@ client.on("messageCreate", async message => {
     await webhook.send({
     content: `\`${message.author.displayName} (${message.author.tag})\`: ${message.content}`,
     username: 'logging for msgs >//<',
-    avatarURL: 'https://tenor.com/view/anime-vinland-saga-thorfinn-windy-gif-15052575',
+    avatarURL: 'https://i.pinimg.com/736x/30/a7/6a/30a76a17ee6f255c7432824dffe35659.jpg',
   });
 
   // Forward any attachments
@@ -61,7 +61,7 @@ client.on("messageCreate", async message => {
       await webhook.send({
         files: [attachment.url],
         username: 'logging for msgs >//<',
-        avatarURL: 'https://tenor.com/view/anime-vinland-saga-thorfinn-windy-gif-15052575',
+        avatarURL: 'https://i.pinimg.com/736x/30/a7/6a/30a76a17ee6f255c7432824dffe35659.jpg',
       });
     }
   }
