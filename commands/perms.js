@@ -4,7 +4,11 @@ module.exports = {
     name: 'perms',
     async execute(client, message, args) {
         try {
-            // Get the target user (mentioned user or message author)
+
+            if (!message.member.permissions.has("MANAGE_ROLES")) {
+                return message.reply("*you don't have permission to jail members.*");
+            }
+
             const targetUser = message.mentions.members.first() || message.member;
             
             // Get the role by ID
@@ -14,7 +18,7 @@ module.exports = {
                 const errorEmbed = new MessageEmbed()
                     .setDescription('*sorry, couldn\'t find the permissions role.*')
                     .setColor('RED');
-                return message.channel.send({ embeds: [errorEmbed] });
+                return message.replt({ embeds: [errorEmbed] });
             }
 
             // Check if user already has the role
@@ -22,7 +26,7 @@ module.exports = {
                 const alreadyHasEmbed = new MessageEmbed()
                     .setDescription(`**${targetUser.user.username}** already has the permissions role.`)
                     .setColor('YELLOW');
-                return message.channel.send({ embeds: [alreadyHasEmbed] });
+                return message.reply({ embeds: [alreadyHasEmbed] });
             }
 
             // Add the role
@@ -34,7 +38,7 @@ module.exports = {
                 .setColor('GREEN')
                 .setThumbnail(targetUser.user.displayAvatarURL({ dynamic: true, size: 512 }));
 
-            message.channel.send({ embeds: [successEmbed] });
+            message.reply({ embeds: [successEmbed] });
 
         } catch (error) {
             console.error('Error in perms command:', error);
