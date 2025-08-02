@@ -51,8 +51,8 @@ client.on("messageCreate", async message => {
     
     await webhook.send({
     content: `\`${message.author.displayName} (${message.author.tag})\`: ${message.content}`,
-    username: message.author.username,
-    avatarURL: message.author.displayAvatarURL({ dynamic: true }),
+    username: 'logging for msgs >//<',
+    avatarURL: 'https://tenor.com/view/anime-vinland-saga-thorfinn-windy-gif-15052575',
   });
 
   // Forward any attachments
@@ -60,8 +60,8 @@ client.on("messageCreate", async message => {
     for (const attachment of message.attachments.values()) {
       await webhook.send({
         files: [attachment.url],
-        username: message.author.username,
-        avatarURL: message.author.displayAvatarURL({ dynamic: true }),
+        username: 'logging for msgs >//<',
+        avatarURL: 'https://tenor.com/view/anime-vinland-saga-thorfinn-windy-gif-15052575',
       });
     }
   }
