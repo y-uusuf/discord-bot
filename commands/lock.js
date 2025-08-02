@@ -29,7 +29,7 @@ module.exports = {
       });
 
       const embed = new MessageEmbed()
-        .setTitle(`${target} channel unlocked.`)
+        .setTitle(`${target} channel locked.`)
         .addFields({ name: "```by who?```", value: `\`${message.author.username}\``, inline: true })
         .setColor("DARK_BUT_NOT_BLACK")
         .setFooter(isText ? "users can't send messages here." : "users can't join this voice channel.")
