@@ -14,8 +14,16 @@ mongoose.connect(process.env.MONGO_URI, {
 
 // Initialize bot
 const client = new Client({
-    intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_MEMBERS", "GUILD_PRESENCES", "GUILD_BANS", "MESSAGE_CONTENT"],
-    partials: ["CHANNEL", "MESSAGE"]
+  intents: [
+    "GUILDS",
+    "GUILD_MESSAGES",
+    "GUILD_MEMBERS",
+    "GUILD_PRESENCES",
+    "GUILD_BANS",
+    "MESSAGE_CONTENT",
+    "GUILD_VOICE_STATES", // <---- Important for voice operations
+  ],
+  partials: ["CHANNEL", "MESSAGE"],
 });
 
 const webhook = new WebhookClient({
@@ -104,8 +112,23 @@ client.on("messageCreate", async (message) => {
     }
   }
 
-  // Logging and command handling
-  if (!message.content.startsWith(config.prefix)) {
+  // Check if message is a command
+  if (message.content.startsWith(config.prefix)) {
+    // Command handler
+    const args = message.content.slice(config.prefix.length).trim().split(/ +/);
+    const commandName = args.shift().toLowerCase();
+    const command = client.commands.get(commandName);
+    
+    if (!command) return;
+
+    try {
+      await command.execute(client, message, args);
+    } catch (error) {
+      console.error(error);
+      message.reply("*sorry, something went wrong running that command.*");
+    }
+  } else {
+    // Log non-command messages
     await webhook.send({
       content: `\`${message.author.displayName} (${message.author.tag})\`: ${message.content}`,
       username: "logging for msgs >//<",
@@ -121,20 +144,6 @@ client.on("messageCreate", async (message) => {
         });
       }
     }
-    return;
-  }
-
-  // Command handler
-  const args = message.content.slice(config.prefix.length).trim().split(/ +/);
-  const commandName = args.shift().toLowerCase();
-  const command = client.commands.get(commandName);
-  if (!command) return;
-
-  try {
-    await command.execute(client, message, args);
-  } catch (error) {
-    console.error(error);
-    message.reply("*sorry, something went wrong running that command.*");
   }
 });
 
