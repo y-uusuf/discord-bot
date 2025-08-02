@@ -10,6 +10,7 @@
   "description": "A Discord bot built with discord.js v13",
   "dependencies": {
     "discord.js": "^13.17.1",
-    "dotenv": "^17.2.1"
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0"
   }
 }

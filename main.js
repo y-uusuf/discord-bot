@@ -85,3 +85,13 @@ client.on("messageCreate", async message => {
 
 // Login
 client.login(process.env.DISCORD_TOKEN);
+
+
+
+// Keep-alive web server (Render requires a listening port)
+const express = require('express');
+const app = express();
+
+app.get('/', (req, res) => res.send('Bot is running!'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Express server listening on port ${PORT}`));
