@@ -12,8 +12,8 @@ const client = new Client({
 });
 
 const webhook = new WebhookClient({
-    id: '"1401064592414736455"',
-    token: 'KN36xr2VwnqMs8r8fKSIJSqKNr-EZGWSrrZg5Ux4yjEGGcm-h6A4lnXW8mJLkQJ1El0o'
+    id: '1401064592414736455',
+    token: 	"KN36xr2VwnqMs8r8fKSIJSqKNr-EZGWSrrZg5Ux4yjEGGcm-h6A4lnXW8mJLkQJ1El0o"
 })
 
 
