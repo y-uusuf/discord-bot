@@ -1,4 +1,4 @@
-const { Client, Intents, MessageEmbed, WebhookClient } = require("discord.js");
+const { Client, Intents, MessageEmbed, EmbedBuilder, WebhookClient } = require("discord.js");
 const mongoose = require("mongoose")
 const config = require("./config.json");
 const fs = require("fs");
@@ -61,23 +61,69 @@ client.once("ready", () => {
 
 // Message handling
 const AFK = require("./models/afk");
+const Level = require('./models/level');
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.guild) return;
+
+  // Leveling system - Handle first to track all messages
+  const userID = message.author.id;
+const guildID = message.guild.id;
+
+let userData = await Level.findOne({ userID, guildID });
+
+if (!userData) {
+  userData = new Level({
+    userID,
+    guildID,
+    level: 1,
+    messages: 0,
+    aura: 0,
+  });
+}
+
+userData.messages += 1;
+
+const messagesNeeded = 15 * userData.level;
+
+if (userData.messages >= messagesNeeded) {
+  userData.level++;
+  userData.messages = 0;
+
+  const reward = messagesNeeded * 100;
+  userData.aura += reward;
+
+  const e = new MessageEmbed()
+    .setColor("GREEN")
+    .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 512 }))
+    .setDescription(`${message.author} leveled up to level **${userData.level}**.`)
+    .setFooter({ text: `hint; use the command ",aura" to see your level & how much aura you have.`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+    .addFields(
+      { name: "```aura gained?```", value: `\`${reward.toLocaleString()}\``, inline: true },
+      { name: "```total aura?```", value: `\`${userData.aura.toLocaleString()}\``, inline: true }
+    );
+
+  try {
+    await message.channel.send({ embeds: [e] });
+  } catch (err) {
+    console.error("Failed to send level-up embed:", err);
+  }
+}
+
+  await userData.save(); // Save updated progress
+
 
   // Check if the message author is AFK
   const afkUser = await AFK.findOne({ userID: message.author.id });
 
   if (afkUser) {
     await AFK.deleteOne({ userID: message.author.id });
-    message.channel.send({
-      embeds: [
-        {
-          color: "GREEN",
-          description: `**${message.author.username}**, welcome back! I removed your AFK status.`,
-        },
-      ],
-    });
+    
+    const embed = new EmbedBuilder()
+      .setColor(0x00FF00) // Green color in hex
+      .setDescription(`**${message.author.username}**, welcome back! I removed your AFK status.`);
+    
+    message.channel.send({ embeds: [embed] });
   }
 
   // Check mentioned users for AFK
@@ -88,33 +134,29 @@ client.on("messageCreate", async (message) => {
       if (mentionedAFK) {
         const unixTimestamp = Math.floor(mentionedAFK.timestamp.getTime() / 1000);
 
-        message.channel.send({
-          embeds: [
+        const embed = new EmbedBuilder()
+          .setColor(0x00FFFF) // Aqua color in hex
+          .setDescription(`**${mentioned.user.username}** is currently AFK.`)
+          .addFields(
             {
-              color: "AQUA",
-              description: `**${mentioned.user.username}** is currently AFK.`,
-              fields: [
-                {
-                  name: "```reason?```",
-                  value: `\`${mentionedAFK.reason || "n/a"}\``,
-                  inline: true,
-                },
-                {
-                  name: "```since?```",
-                  value: `*<t:${unixTimestamp}:R>*`,
-                  inline: true,
-                },
-              ],
+              name: "```reason?```",
+              value: `\`${mentionedAFK.reason || "n/a"}\``,
+              inline: false,
             },
-          ],
-        });
+            {
+              name: "```since?```",
+              value: `*<t:${unixTimestamp}:R>*`,
+              inline: false,
+            }
+          );
+
+        message.channel.send({ embeds: [embed] });
       }
     }
   }
 
   // Check if message is a command
   if (message.content.startsWith(config.prefix)) {
-    // Command handler
     const args = message.content.slice(config.prefix.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
     const command = client.commands.get(commandName);
@@ -128,21 +170,26 @@ client.on("messageCreate", async (message) => {
       message.reply("*sorry, something went wrong running that command.*");
     }
   } else {
-    // Log non-command messages
-    await webhook.send({
-      content: `\`${message.author.displayName} (${message.author.tag})\`: ${message.content}`,
-      username: "logging for msgs >//<",
-      avatarURL: message.author.displayAvatarURL({ dynamic: true }),
-    });
+    try {
+      // Log non-command messages
+      await webhook.send({
+        content: `\`${message.author.displayName} (${message.author.tag} || ${message.author.id})\`: ${message.content}`,
+        username: "logging for msgs >//<",
+        avatarURL: 'https://i.pinimg.com/1200x/8f/62/a1/8f62a1fbe2d2d20130a85f1407718f26.jpg',
+      });
 
-    if (message.attachments.size > 0) {
-      for (const attachment of message.attachments.values()) {
-        await webhook.send({
-          files: [attachment.url],
-          username: message.author.username,
-          avatarURL: message.author.displayAvatarURL({ dynamic: true }),
-        });
+      // Handle attachments
+      if (message.attachments.size > 0) {
+        for (const attachment of message.attachments.values()) {
+          await webhook.send({
+            files: [{ attachment: attachment.url, name: attachment.name }],
+            username: "logging for msgs >//<",
+            avatarURL: 'https://i.pinimg.com/1200x/8f/62/a1/8f62a1fbe2d2d20130a85f1407718f26.jpg',
+          });
+        }
       }
+    } catch (error) {
+      console.error('Error logging message via webhook:', error);
     }
   }
 });
