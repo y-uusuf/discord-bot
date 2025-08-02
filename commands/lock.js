@@ -7,31 +7,38 @@ module.exports = {
       return message.reply("*sorry, you can't lock any channels.*");
     }
 
-    // Determine the target channel
     const target =
       message.mentions.channels.first() ||
       message.guild.channels.cache.get(args[0]) ||
       message.channel;
 
-    if (!target || !target.isText()) {
-      return message.reply("*please, provide a valid channel ID to lock, otherwise leave it blank to lock this one.");
+    if (!target) {
+      return message.reply("*please, provide a valid channel to lock.*");
     }
 
     try {
+      const isVoice = target.type === "GUILD_VOICE" || target.type === "GUILD_STAGE_VOICE";
+      const isText = target.type === "GUILD_TEXT" || target.type === "GUILD_NEWS";
+
+      if (!isVoice && !isText) {
+        return message.reply("*this channel type is not supported.*");
+      }
+
       await target.permissionOverwrites.edit(message.guild.roles.everyone, {
-        SEND_MESSAGES: false,
+        [isText ? 'SEND_MESSAGES' : 'CONNECT']: false,
       });
 
-      let embed = new MessageEmbed()
-      .setTitle("this channel has been locked.")
-      .addFields({name: "```by who?```", value: `\`${message.author.username}\``, inline: true})
-      .setColor("DARK_BUT_NOT_BLACK")
-      .setFooter("you can't send messages in here unless you have permission to.")
-      .setTimestamp()
-      message.channel.send({embeds: [embed]});
+      const embed = new MessageEmbed()
+        .setTitle(`${target} channel unlocked.`)
+        .addFields({ name: "```by who?```", value: `\`${message.author.username}\``, inline: true })
+        .setColor("DARK_BUT_NOT_BLACK")
+        .setFooter(isText ? "users can't send messages here." : "users can't join this voice channel.")
+        .setTimestamp();
+
+      message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error(err);
-      message.reply("*sorry, i couldn't lock the channel.*")
+      message.reply("*sorry, i couldn't lock the channel.*");
     }
   },
 };

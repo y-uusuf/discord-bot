@@ -31,8 +31,8 @@ module.exports = {
       if (activity.type === 'CUSTOM') {
         const customEmbed = new MessageEmbed()
           .setAuthor({ name: user.user.username, iconURL: user.user.displayAvatarURL({ dynamic: true }) })
-          .setColor('GREEN')
-          .addField('**custom status?**', `${activity.emoji?.name || 'no emoji. :/'} | ${activity.state || 'no text. :/'}`)
+          .setColor('DARK_BUT_NOT_BLACK')
+          .addField('**custom status?**', `${activity.emoji?.name || '`no emoji. :/`'} | \`${activity.state || '`no text. :/`'}\``)
           .setThumbnail(user.user.displayAvatarURL({ dynamic: true }))
           .setFooter({ text: message.guild.name, iconURL: message.guild.iconURL({ dynamic: true }) })
           .setTimestamp();

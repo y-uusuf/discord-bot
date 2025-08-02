@@ -52,43 +52,93 @@ client.once("ready", () => {
 });
 
 // Message handling
-client.on("messageCreate", async message => {
-    if (message.author.bot) return;
-    if (!message.content.startsWith(config.prefix)) {
-    
-    await webhook.send({
-    content: `\`${message.author.displayName} (${message.author.tag})\`: ${message.content}`,
-    username: 'logging for msgs >//<',
-    avatarURL: 'https://i.pinimg.com/736x/30/a7/6a/30a76a17ee6f255c7432824dffe35659.jpg',
-  });
+const AFK = require("./models/afk");
 
-  // Forward any attachments
-  if (message.attachments.size > 0) {
-    for (const attachment of message.attachments.values()) {
-      await webhook.send({
-        files: [attachment.url],
-        username: 'logging for msgs >//<',
-        avatarURL: 'https://i.pinimg.com/736x/30/a7/6a/30a76a17ee6f255c7432824dffe35659.jpg',
-      });
+client.on("messageCreate", async (message) => {
+  if (message.author.bot || !message.guild) return;
+
+  // Check if the message author is AFK
+  const afkUser = await AFK.findOne({ userID: message.author.id });
+
+  if (afkUser) {
+    await AFK.deleteOne({ userID: message.author.id });
+    message.channel.send({
+      embeds: [
+        {
+          color: "GREEN",
+          description: `**${message.author.username}**, welcome back! I removed your AFK status.`,
+        },
+      ],
+    });
+  }
+
+  // Check mentioned users for AFK
+  if (message.mentions.members.size > 0) {
+    for (const mentioned of message.mentions.members.values()) {
+      const mentionedAFK = await AFK.findOne({ userID: mentioned.id });
+
+      if (mentionedAFK) {
+        const unixTimestamp = Math.floor(mentionedAFK.timestamp.getTime() / 1000);
+
+        message.channel.send({
+          embeds: [
+            {
+              color: "AQUA",
+              description: `**${mentioned.user.username}** is currently AFK.`,
+              fields: [
+                {
+                  name: "```reason?```",
+                  value: `\`${mentionedAFK.reason || "n/a"}\``,
+                  inline: true,
+                },
+                {
+                  name: "```since?```",
+                  value: `*<t:${unixTimestamp}:R>*`,
+                  inline: true,
+                },
+              ],
+            },
+          ],
+        });
+      }
     }
   }
 
-} else {
+  // Logging and command handling
+  if (!message.content.startsWith(config.prefix)) {
+    await webhook.send({
+      content: `\`${message.author.displayName} (${message.author.tag})\`: ${message.content}`,
+      username: "logging for msgs >//<",
+      avatarURL: message.author.displayAvatarURL({ dynamic: true }),
+    });
 
-    const args = message.content.slice(config.prefix.length).trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
-
-    const command = client.commands.get(commandName);
-    if (!command) return;
-
-    try {
-        await command.execute(client, message, args);
-    } catch (error) {
-        console.error(error);
-        message.reply("*sorry, something went wrong running that command.*");
+    if (message.attachments.size > 0) {
+      for (const attachment of message.attachments.values()) {
+        await webhook.send({
+          files: [attachment.url],
+          username: message.author.username,
+          avatarURL: message.author.displayAvatarURL({ dynamic: true }),
+        });
+      }
     }
+    return;
+  }
+
+  // Command handler
+  const args = message.content.slice(config.prefix.length).trim().split(/ +/);
+  const commandName = args.shift().toLowerCase();
+  const command = client.commands.get(commandName);
+  if (!command) return;
+
+  try {
+    await command.execute(client, message, args);
+  } catch (error) {
+    console.error(error);
+    message.reply("*sorry, something went wrong running that command.*");
   }
 });
+
+
 
 // Login
 client.login(process.env.DISCORD_TOKEN);

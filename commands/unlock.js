@@ -12,20 +12,27 @@ module.exports = {
       message.guild.channels.cache.get(args[0]) ||
       message.channel;
 
-    if (!target || !target.isText()) {
-      return message.reply("*please, provide a valid channel ID to unlock, otherwise leave it blank to unlock this one.*");
+    if (!target) {
+      return message.reply("*please, provide a valid channel to unlock.*");
     }
 
     try {
+      const isVoice = target.type === "GUILD_VOICE" || target.type === "GUILD_STAGE_VOICE";
+      const isText = target.type === "GUILD_TEXT" || target.type === "GUILD_NEWS";
+
+      if (!isVoice && !isText) {
+        return message.reply("*this channel type is not supported.*");
+      }
+
       await target.permissionOverwrites.edit(message.guild.roles.everyone, {
-        SEND_MESSAGES: null, // Resets permission to default
+        [isText ? 'SEND_MESSAGES' : 'CONNECT']: null, // reset to default
       });
 
-      let embed = new MessageEmbed()
-        .setTitle("this channel has been unlocked.")
+      const embed = new MessageEmbed()
+        .setTitle(`${target} channel unlocked.`)
         .addFields({ name: "```by who?```", value: `\`${message.author.username}\``, inline: true })
         .setColor("DARK_BUT_NOT_BLACK")
-        .setFooter("everyone can now send messages in this channel again.")
+        .setFooter(isText ? "users can now send messages here." : "users can now join this voice channel.")
         .setTimestamp();
 
       message.channel.send({ embeds: [embed] });
