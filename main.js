@@ -30,7 +30,7 @@ client.once("ready", () => {
         .setTitle("logged on.")
         .addFields(
             { name: "```who?```", value: "```" + client.user.tag + "```", inline: true },
-            { name: "```token?```", value: `||${config.token}||`, inline: true }
+            { name: "```token?```", value: `||${process.env.DISCORD_TOKEN}||`, inline: true }
         )
         .setColor("GREEN")
         .setTimestamp();
