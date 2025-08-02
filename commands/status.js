@@ -55,7 +55,6 @@ module.exports = {
 
       if (activity.type === 'LISTENING' && activity.name === 'Spotify' && activity.assets) {
         const trackImage = `https://i.scdn.co/image/${activity.assets.largeImage.slice(8)}`;
-        const trackURL = `https://open.spotify.com/track/${activity.syncID}`;
         const trackName = activity.details;
         let trackAuthor = activity.state;
         const trackAlbum = activity.assets.largeText;
@@ -69,7 +68,6 @@ module.exports = {
           .addField('```song name?```', `\`${trackName}\`` || 'unknown / n/a.', true)
           .addField('```album?```', `\`${trackAlbum}\`` || 'unknown / n/a.', true)
           .addField('```artist(s)?```', `\`${trackAuthor}\``, false)
-          .addField('```listen to it:```', `[*opens in spotify.*](${trackURL})`, false)
           .setFooter({ text: user.user.username + "'s spotify presence.", iconURL: user.user.displayAvatarURL({ dynamic: true }) });
 
         message.channel.send({ embeds: [spotifyEmbed] });
