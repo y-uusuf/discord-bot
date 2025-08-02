@@ -3,7 +3,7 @@ const Level = require("../models/level"); // adjust path as needed
 
 module.exports = {
   name: "aura",
-  async execute(client, message) {
+  async execute(client, message, args) {
 
      let target =
       message.mentions.users.first() ||
@@ -26,7 +26,7 @@ module.exports = {
     const embed = new MessageEmbed()
       .setColor("GOLD")
       .setTitle("your aura;")
-      .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+      .setThumbnail(target.displayAvatarURL({ dynamic: true }))
       .addFields(
         { name: "```level```", value: `\`${userData.level}.\``, inline: true },
         { name: "```aura```", value: `\`${userData.aura.toLocaleString()}.\``, inline: true },
