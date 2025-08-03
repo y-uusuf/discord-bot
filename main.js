@@ -22,9 +22,10 @@ const client = new Client({
     "GUILD_PRESENCES",
     "GUILD_BANS",
     "MESSAGE_CONTENT",
-    "GUILD_VOICE_STATES", // <---- Important for voice operations
+    "GUILD_VOICE_STATES",
+    "DIRECT_MESSAGES" // ← Add this!
   ],
-  partials: ["CHANNEL", "MESSAGE"],
+  partials: ["CHANNEL", "MESSAGE", "USER"], // ← Important for DMs
 });
 
 const webhook = new WebhookClient({
@@ -75,25 +76,35 @@ const Level = require("./models/level");
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-
-  if (message.channel.type === "DM") {
+  // Handle DM messages
+  if (message.channel.type == "DM") {
+    console.log(message.content)
     if (message.content.startsWith(config.prefix)) {
-      const args = message.content.slice(config.prefix.length).trim().split(/ +/);
-      const commandName = args.shift().toLowerCase();
-      const command = client.commands.get(commandName);
-      
-      if (!command || !command === 'confess') return;
-      
-      try {
-        await command.execute(client, message, args);
-      } catch (error) {
-        console.error(error);
-        message.reply("*sorry, something went wrong running that command.*");
-      }
+  const args = message.content.slice(config.prefix.length).trim().split(/ +/);
+  const commandName = args.shift().toLowerCase();
 
-  }
+  // Only allow 'confess' command in DMs
+  if (commandName !== "confess") {
+    return message.reply("*sorry, only the `confess` command can be used in DMs.*");
   }
 
+  const command = client.commands.get(commandName);
+  if (!command) return;
+
+  try {
+    await command.execute(client, message, args);
+  } catch (error) {
+    console.error(error);
+    message.reply("*sorry, something went wrong running that command.*");
+  }
+}
+
+    return; // Exit early for all DM messages
+  } else if (!message.guild) {
+    return
+  }
+
+  // Guild message handling starts here
   // Leveling system - Handle first to track all messages
   const userID = message.author.id;
   const guildID = message.guild.id;

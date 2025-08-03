@@ -1,23 +1,45 @@
-const { MessageEmbed, WebhookClient } = require("discord.js")
-const { execute } = require("./ban")
+const { MessageEmbed, WebhookClient } = require("discord.js");
 
 module.exports = {
     name: 'confess',
     async execute(client, message, args, webhook) {
 
-        let confession = args[0]
+        if (message.guild) return;
 
-        if (!confession) return message.reply("*please, tell me what you'd like to confess to the server.*")
+        let confession = args.join(' ');
+        
+        if (!confession || confession.trim() === '') {
+            return message.reply("*please, tell me what you'd like to confess to the server.*\n*Example: `" + (message.guild ? "," : ",") + "confess I have a secret crush on someone`*");
+        }
 
+        // Create the confession embed
         let confessEmbed = new MessageEmbed()
-        .setColor("DARK_BUT_NOT_BLACK")
-        .setAuthor("a confession has been made.")
-        .setDescription(`❝*${confession}*❞.`)
-        .setTimestamp()
+            .setColor("DARK_BUT_NOT_BLACK")
+            .setAuthor({ name: "someone has made a confession." })
+            .setDescription(`*"__${confession}__"*`)
+            .setFooter({ text: "sent anonymously via DMs // do the same with \",confess\"." })
+            .setTimestamp();
 
-        confessionCh = new WebhookClient({
+        // Create webhook client for confessions (separate from the logging webhook)
+        const confessionWebhook = new WebhookClient({
             id: "1400935245078986813",
             token: "ivYodPXt8F_h6q2GpAOiA9VylMp8ERYTpTwQUJz7eFZQE8l-Z_KHqwZUTtd6gYIuCD56"
-        }).then(confessionCh.send({embeds: [confessEmbed]}))
-    }
+        });
+
+        try {
+            // Send the confession to the confessions channel
+            await confessionWebhook.send({ 
+                embeds: [confessEmbed],
+                username: "confessions >//<",
+                avatarURL: "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/15/ae/ba/15aeba68-dd90-d9bc-6189-58a7ad8596e5/artwork.jpg/600x600bf-60.jpg" // Optional: custom avatar
+            });
+            
+            // Confirm to the user in DM
+            await message.reply("*your confession has been sent anonymously to the server!* \n> `no one will know it was you.`");
+            
+        } catch (error) {
+            console.error("Error sending confession:", error);
+            await message.reply("*sorry, something went wrong while sending your confession. please try again later.*");
+        }
 }
+};
