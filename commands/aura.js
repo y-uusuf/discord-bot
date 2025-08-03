@@ -13,7 +13,7 @@ module.exports = {
     const userID = target.id;
     const guildID = message.guild.id;
 
-    let userData = await Level.findOne({ userID, guildID });
+    let userData = await Level.findOne({ userID });
 
      if (!userData) {
         return message.reply(

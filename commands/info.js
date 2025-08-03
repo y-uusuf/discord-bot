@@ -52,13 +52,13 @@ module.exports = {
 
     try {
       const banInfo = await message.guild.bans.fetch(user.id);
+      embed.setColor("RED");
       embed.setDescription("```WARNING!``` This user has been banned from this server.");
       embed.addFields({
         name: "```reason for ban?```",
         value: banInfo.reason,
         inline: true,
       });
-      embed.setColor("RED");
     } catch (error) {
       embed.setColor("PURPLE");
     }

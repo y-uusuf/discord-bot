@@ -5,7 +5,7 @@ module.exports = {
   async execute(client, message, args) {
     let user;
 
-    // Check for mention
+
     if (message.mentions.users.first()) {
       user = message.mentions.users.first();
     }
@@ -23,7 +23,7 @@ module.exports = {
     }
 
     const embed = new MessageEmbed()
-      .setTitle(`${user.username}'s avatar.`)
+      .setDescription(`\`\`\`${user.username}'s avatar.\`\`\``)
       .setImage(user.displayAvatarURL({ dynamic: true, size: 1024 }))
       .setColor("DARK_BUT_NOT_BLACK");
 

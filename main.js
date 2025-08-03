@@ -79,12 +79,11 @@ client.on("messageCreate", async (message) => {
   const userID = message.author.id;
   const guildID = message.guild.id;
 
-  let userData = await Level.findOne({ userID, guildID });
+  let userData = await Level.findOne({ userID });
 
   if (!userData) {
     userData = new Level({
       userID,
-      guildID,
       level: 1,
       messages: 0,
       aura: 0,
