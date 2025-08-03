@@ -78,7 +78,6 @@ client.on("messageCreate", async (message) => {
 
   // Handle DM messages
   if (message.channel.type == "DM") {
-    console.log(message.content)
     if (message.content.startsWith(config.prefix)) {
   const args = message.content.slice(config.prefix.length).trim().split(/ +/);
   const commandName = args.shift().toLowerCase();

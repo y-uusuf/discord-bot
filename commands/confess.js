@@ -22,8 +22,8 @@ module.exports = {
 
         // Create webhook client for confessions (separate from the logging webhook)
         const confessionWebhook = new WebhookClient({
-            id: "1400935245078986813",
-            token: "ivYodPXt8F_h6q2GpAOiA9VylMp8ERYTpTwQUJz7eFZQE8l-Z_KHqwZUTtd6gYIuCD56"
+            id: "1401682920296419420",
+            token: "ypBXnbjyYwsCWKjwH-q2YZyv2R9aZkynqDPrm7reZJZABcJzWIfhkg3K0h6DxhdM3vZQ"
         });
 
         try {
