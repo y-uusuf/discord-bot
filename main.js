@@ -73,7 +73,26 @@ const AFK = require("./models/afk");
 const Level = require("./models/level");
 
 client.on("messageCreate", async (message) => {
-  if (message.author.bot || !message.guild) return;
+  if (message.author.bot) return;
+
+
+  if (message.channel.type === "DM") {
+    if (message.content.startsWith(config.prefix)) {
+      const args = message.content.slice(config.prefix.length).trim().split(/ +/);
+      const commandName = args.shift().toLowerCase();
+      const command = client.commands.get(commandName);
+      
+      if (!command || !command === 'confess') return;
+      
+      try {
+        await command.execute(client, message, args);
+      } catch (error) {
+        console.error(error);
+        message.reply("*sorry, something went wrong running that command.*");
+      }
+
+  }
+  }
 
   // Leveling system - Handle first to track all messages
   const userID = message.author.id;
