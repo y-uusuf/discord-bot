@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const { Client, Intents, MessageEmbed, WebhookClient } = require("discord.js");
 const mongoose = require("mongoose");
 const config = require("./config.json");
@@ -5,13 +7,10 @@ const Warn = require('./models/warn');
 const fs = require("fs");
 const path = require("path");
 
-require("dotenv").config();
+
 
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URI, {})
   .then(console.log("Sucessfully connected to database."));
 
 // Initialize bot
