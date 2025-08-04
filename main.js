@@ -248,29 +248,39 @@ client.on("messageCreate", async (message) => {
       message.reply("*sorry, something went wrong running that command.*");
     }
   } else {
-    try {
-      // Log non-command messages
-      await webhook.send({
-        content: `\`${message.author.displayName} (${message.author.tag} || ${message.author.id})\`: ${message.content}`,
-        username: "logging for msgs >//<",
-        avatarURL:
-          "https://i.pinimg.com/1200x/8f/62/a1/8f62a1fbe2d2d20130a85f1407718f26.jpg",
-      });
+try {
+   const messageLink = `https://discord.com/channels/${message.guild.id}/${message.channel.id}/${message.id}`;
 
-      // Handle attachments
-      if (message.attachments.size > 0) {
-        for (const attachment of message.attachments.values()) {
-          await webhook.send({
-            files: [{ attachment: attachment.url, name: attachment.name }],
-            username: "logging for msgs >//<",
-            avatarURL:
-              "https://i.pinimg.com/1200x/8f/62/a1/8f62a1fbe2d2d20130a85f1407718f26.jpg",
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error logging message via webhook:", error);
-    }
+  const basePayload = {
+    username: `${message.author.displayName} (${message.author.username})`,
+    avatarURL: message.author.displayAvatarURL({ dynamic: true }),
+  };
+
+  if (message.attachments.size > 0) {
+    const files = message.attachments.map(att => ({
+      attachment: att.url,
+      name: att.name,
+    }));
+
+    await webhook.send({
+      ...basePayload,
+      content: `${message.content || ""}`,
+      files,
+    });
+  } else {
+    await webhook.send({
+      ...basePayload,
+      content: `${message.content}`,
+    });
+  }
+  await webhook.send({
+    ...basePayload,
+    content: '-# msg link; ' + messageLink
+  })
+} catch (error) {
+  console.error("Error logging message via webhook:", error);
+}
+
   }
 });
 
