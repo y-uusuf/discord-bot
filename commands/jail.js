@@ -28,7 +28,7 @@ module.exports = {
 
       const embed = new MessageEmbed()
         .setColor("RED")
-        .setDescription(`\`sucessfully jailed ${target.username}.\``)
+        .setDescription(`\`sucessfully jailed ${target.user.username}.\``)
         .setFooter({ text: "jailed by " + message.author.username + "." })
         .setTimestamp();
 
