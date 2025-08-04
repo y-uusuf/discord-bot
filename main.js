@@ -275,7 +275,7 @@ try {
   }
   await webhook.send({
     ...basePayload,
-    content: `msg link; ${messageLink} | channel; <#${message.channel.id}> | usr id; ${message.author.id}`
+    content: `-# msg link; ${messageLink} | channel; <#${message.channel.id}> | usr id; ${message.author.id}`
   })
 } catch (error) {
   console.error("Error logging message via webhook:", error);
