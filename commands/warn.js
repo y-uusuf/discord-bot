@@ -1,6 +1,8 @@
 const Warn = require('../models/warn.js');
 const { MessageEmbed } = require("discord.js");
 
+const JAIL_ROLE_ID = '915677219437830225';
+
 module.exports = {
   name: 'warn',
   async execute(client, message, args) {
@@ -47,12 +49,15 @@ module.exports = {
 
       await warnDoc.save();
 
+      const totalWarns = warnDoc.warnings.length;
+
       const warnEmbed = new MessageEmbed()
         .setColor('ORANGE')
         .setAuthor({ name: "user warned successfully.", iconURL: target.displayAvatarURL() })
         .addFields(
           { name: '```Who?```', value: `\`${target.username}\``, inline: true },
-          { name: '```Why?```', value: `\`${reason}\``, inline: true }
+          { name: '```Why?```', value: `\`${reason}\``, inline: true },
+          { name: '```Total Warnings?```', value: `\`${totalWarns}\``, inline: true }
         )
         .setFooter({ text: `this user was warned by ${message.author.username}.` })
         .setTimestamp();
@@ -61,10 +66,67 @@ module.exports = {
 
       try {
         await target.send(
-          `Hello ${target.username},\n> You've been warned in **${message.guild.name}** for '*${reason}*'.\n> Please be more mindful in the future.`
+          `Hello ${target.username},\n> You've been warned in **${message.guild.name}** for '*${reason}*'.\n> You now have **${totalWarns}** total warning(s).`
         );
-      } catch {
-        // DMs might be off, ignore
+      } catch {}
+
+      const guildMember = await message.guild.members.fetch(userId).catch(() => null);
+      if (!guildMember) return;
+
+      if (totalWarns === 2 || totalWarns === 5) {
+        const durationMs = totalWarns === 2
+          ? 24 * 60 * 60 * 1000  // 24 hours
+          : 7 * 24 * 60 * 60 * 1000; // 7 days
+
+        const durationStr = totalWarns === 2 ? '24 hours' : '7 days';
+
+        const expirationDate = new Date(Date.now() + durationMs);
+        warnDoc.jailedUntil = expirationDate;
+        await warnDoc.save();
+
+        await guildMember.roles.add(JAIL_ROLE_ID).catch(() => {});
+
+        const jailEmbed = new MessageEmbed()
+          .setColor('RED')
+          .setTitle(`user auto-jailed.`)
+          .addFields(
+            { name: '```who?```', value: `\`${target.username}\``, inline: true },
+            { name: '```why?```', value: `\`reached ${totalWarns} warnings.\``, inline: true },
+            { name: '```until?```', value: `<t:${Math.floor(expirationDate.getTime() / 1000)}:F>`, inline: true }
+          )
+          .setFooter({ text: `${target.username} was automatically jailed.` })
+          .setTimestamp();
+
+        await message.channel.send({ embeds: [jailEmbed] });
+
+      } else if (totalWarns >= 6) {
+        if (guildMember.bannable) {
+  try {
+    await guildMember.send(`You have been banned from **${message.guild.name}** for reaching 6 warnings.`);
+  } catch {}
+
+  try {
+    await guildMember.ban({ reason: `Reached 6 warnings.` });
+
+    const banEmbed = new MessageEmbed()
+      .setColor('DARK_RED')
+      .setTitle(`user auto-banned.`)
+      .addFields(
+        { name: '```Who?```', value: `\`${target.tag}\``, inline: true },
+        { name: '```Reason?```', value: `\`Reached 6 warnings\``, inline: true }
+      )
+      .setFooter({ text: `user banned automatically.` })
+      .setTimestamp();
+
+    await message.channel.send({ embeds: [banEmbed] });
+  } catch (err) {
+    console.warn(`Failed to ban ${target.tag}: ${err.message}`);
+    // Silently fail
+  }
+} else {
+  console.warn(`Cannot ban ${target.tag} due to role hierarchy.`);
+}
+
       }
 
     } catch (err) {

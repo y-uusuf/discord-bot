@@ -1,6 +1,7 @@
 const { Client, Intents, MessageEmbed, WebhookClient } = require("discord.js");
 const mongoose = require("mongoose");
 const config = require("./config.json");
+const Warn = require('./models/warn');
 const fs = require("fs");
 const path = require("path");
 
@@ -41,6 +42,29 @@ require("./handler/commandHandler")(client);
 // Log on
 client.once("ready", () => {
   console.log(`\n${client.user.tag} is sucessfully online.`);
+
+   setInterval(async () => {
+    const now = new Date();
+    const expired = await Warn.find({ jailedUntil: { $lte: now } });
+
+    for (const doc of expired) {
+      try {
+        const guild = await client.guilds.fetch(doc.guildId);
+        const member = await guild.members.fetch(doc.userId);
+
+        if (member.roles.cache.has(JAIL_ROLE_ID)) {
+          await member.roles.remove(JAIL_ROLE_ID);
+        }
+
+        doc.jailedUntil = null;
+        await doc.save();
+
+        console.log(`Unjailed ${member.user.tag}`);
+      } catch (err) {
+        console.warn(`Failed to unjail ${doc.userId}:`, err.message);
+      }
+    }
+  }, 60 * 1000); // check every 60 seconds
 
   const embed = new MessageEmbed()
     .setTitle("logged on.")

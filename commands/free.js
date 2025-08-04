@@ -27,13 +27,9 @@ module.exports = {
       await target.roles.remove(jailRole);
 
       const embed = new MessageEmbed()
-        .setColor("DARK_BUT_NOT_BLACK")
-        .setTitle("unjailed.")
-        .addFields(
-          { name: "```user```", value: `\`${target.user.tag}\``, inline: true },
-          { name: "```by```", value: `\`${message.author.tag}\``, inline: true }
-        )
-        .setFooter({ text: "user has been unjailed." })
+        .setColor("GREEN")
+        .setDescription(`\`sucessfully unjailed ${target.username}.\``)
+        .setFooter({ text: "unjailed by " + message.author.username + "." })
         .setTimestamp();
 
       message.channel.send({ embeds: [embed] });

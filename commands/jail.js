@@ -27,13 +27,9 @@ module.exports = {
       await target.roles.add(jailRole);
 
       const embed = new MessageEmbed()
-        .setColor("DARK_BUT_NOT_BLACK")
-        .setTitle("jailed.")
-        .addFields(
-          { name: "```user```", value: `\`${target.user.tag}\``, inline: true },
-          { name: "```by```", value: `\`${message.author.tag}\``, inline: true }
-        )
-        .setFooter({ text: "user has been jailed." })
+        .setColor("RED")
+        .setDescription(`\`sucessfully jailed ${target.username}.\``)
+        .setFooter({ text: "jailed by " + message.author.username + "." })
         .setTimestamp();
 
       message.channel.send({ embeds: [embed] });
