@@ -18,7 +18,7 @@ module.exports = {
     const resultEmbed = new MessageEmbed()
       .setColor(color)
       .setTitle(`🏓 pong! round-trip took \`${latency}ms.\``)
-      .addFields("```websocket ping?```", `${client.ws.ping}ms`, true);
+      .addFields({name: "```websocket ping?```", value: `${client.ws.ping}ms`, inline: true});
 
     msg.edit({ embeds: [resultEmbed] });
   },
