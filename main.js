@@ -99,6 +99,8 @@ const Level = require("./models/level");
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
+  if (message.content.includes("https://cdn.discordapp.com/attachments/1198671834871251004/1402793329095086242/issa.gif")) return message.reply("<@801125402927824918>").then(m => m.react('😭'))
+
   // Handle DM messages
   if (message.channel.type == "DM") {
     if (message.content.startsWith(config.prefix)) {

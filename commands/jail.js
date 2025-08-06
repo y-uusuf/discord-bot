@@ -32,7 +32,15 @@ module.exports = {
         .setFooter({ text: "jailed by " + message.author.username + "." })
         .setTimestamp();
 
-      message.channel.send({ embeds: [embed] });
+      message.channel.send({ embeds: [embed] })
+      const enter = new MessageEmbed()
+      .setColor('RED')
+      .setDescription(`\`${target.user.username} has entered jail.\``)
+      .setTimestamp()
+
+      client.channels.fetch('1401093772334465074').then(ch => ch.send({ embeds: [enter] }))
+
+
     } catch (err) {
       console.error(err);
       message.reply("*could not jail this user.*");

@@ -33,6 +33,14 @@ module.exports = {
         .setTimestamp();
 
       message.channel.send({ embeds: [embed] });
+
+      const enter = new MessageEmbed()
+      .setColor('GREEN')
+      .setDescription(`\`${target.user.username} has been let out of jail.\``)
+      .setTimestamp()
+
+      client.channels.fetch('1401093772334465074').then(ch => ch.send({ embeds: [enter] }))
+
     } catch (err) {
       console.error(err);
       message.reply("*could not unjail this user.*");
