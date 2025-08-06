@@ -38,7 +38,7 @@ module.exports = {
         .setTimestamp();
 
       warnDoc.warnings.forEach((warn, i) => {
-        embed.addField(
+        embed.addFields(
           `\`warn; #${i + 1}\``,
           `**why?** \`${warn.reason}\`\n**mod?** <@${warn.moderatorId}>\n**when?** *<t:${Math.floor(new Date(warn.timestamp).getTime() / 1000)}:F>*`
         );

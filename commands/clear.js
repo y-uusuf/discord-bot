@@ -82,7 +82,7 @@ module.exports = {
         const embed = new MessageEmbed()
           .setColor('GREEN')
           .setDescription(`\`sucessfully cleared warn #${warnNumber} for ${target.tag}.\``)
-          .addField('```reason for warn?```:', `\`${removedWarn.reason}\`` || 'No reason provided')
+          .addFields('```reason for warn?```:', `\`${removedWarn.reason}\`` || 'No reason provided')
           .setFooter({ text: `This user has a total amount of ${warnDoc.warnings.length} warning(s) remaining.` })
           .setTimestamp();
 

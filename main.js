@@ -249,34 +249,42 @@ client.on("messageCreate", async (message) => {
     }
   } else {
 try {
-   const messageLink = `https://discord.com/channels/${message.guild.id}/${message.channel.id}/${message.id}`;
 
+  if (message.channel.id === '1401064566984544336') {
+    message.delete().then(message.author.send("Sorry, you can't send messages in this channel."))
+  } else {
+
+  const messageLink = `https://discord.com/channels/${message.guild.id}/${message.channel.id}/${message.id}`;
   const basePayload = {
     username: `${message.author.displayName} (${message.author.username})`,
     avatarURL: message.author.displayAvatarURL({ dynamic: true }),
   };
-
+  
   if (message.attachments.size > 0) {
+    // Convert attachments to the correct format for discord.js webhooks
     const files = message.attachments.map(att => ({
       attachment: att.url,
       name: att.name,
     }));
-
+    
     await webhook.send({
       ...basePayload,
-      content: `${message.content || ""}`,
-      files,
+      content: message.content || "*(attachment only)*",
+      files: files,
     });
   } else {
     await webhook.send({
       ...basePayload,
-      content: `${message.content}`,
+      content: message.content,
     });
   }
+  
+  // Send metadata message
   await webhook.send({
     ...basePayload,
-    content: `-# msg link; ${messageLink} | channel; <#${message.channel.id}> | usr id; ${message.author.id}`
-  })
+    content: `-# msg link: ${messageLink} | channel: <#${message.channel.id}> | usr id: ${message.author.id}`
+  });
+}
 } catch (error) {
   console.error("Error logging message via webhook:", error);
 }
