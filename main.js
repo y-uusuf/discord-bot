@@ -271,21 +271,15 @@ try {
     
     await webhook.send({
       ...basePayload,
-      content: message.content || "*(attachment only)*",
+      content: `${message.content}\n-# msg link: ${messageLink} | channel: <#${message.channel.id}> | usr id: ${message.author.id}` || `*(attachment only.)*\n-# msg link: ${messageLink} | channel: <#${message.channel.id}> | usr id: ${message.author.id}`,
       files: files,
     });
   } else {
     await webhook.send({
       ...basePayload,
-      content: message.content,
+      content: `${message.content}\n-# msg link: ${messageLink} | channel: <#${message.channel.id}> | usr id: ${message.author.id}`,
     });
   }
-  
-  // Send metadata message
-  await webhook.send({
-    ...basePayload,
-    content: `-# msg link: ${messageLink} | channel: <#${message.channel.id}> | usr id: ${message.author.id}`
-  });
 }
 } catch (error) {
   console.error("Error logging message via webhook:", error);
