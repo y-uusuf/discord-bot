@@ -288,6 +288,28 @@ try {
   }
 });
 
+client.on("guildMemberAdd", async (member) => {
+  let welcome = new MessageEmbed()
+  .setDescription(`\`${member.displayName} (${member.username}) has joined, say hi!`)
+  .setColor("AQUA")
+  .setFooter({ iconURL: member.displayAvatarURL() }).setTimestamp
+
+  client.channels.fetch('1198671834871251004').then(ch  => ch.send({ embeds: [welcome] }))
+})
+
+client.on("guildMemberRemove", async (member) => {
+  const user = await message.guild.bans.fetch(member.id);
+
+  if (user) return
+
+  let goodbye = new MessageEmbed
+  .setDescription(`\`${member.displayName} (${member.username}) has left, farewell.`)
+  .setColor("AQUA")
+  .setFooter({ iconURL: member.displayAvatarURL() }).setTimestamp
+
+  client.channels.fetch('1198671834871251004').then(ch  => ch.send({ embeds: [welcome] }))
+})
+
 // Login
 client.login(process.env.DISCORD_TOKEN);
 
