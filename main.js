@@ -100,7 +100,7 @@ client.on("messageCreate", async (message) => {
 
   if (message.author.id === "509117215954436122") {
     if (message.content === "who made this bot") {
-      message.reply("you did king").then(m => m.react("🤍"))
+      message.reply("you did king :face_holding_back_tears:").then(m => m.react("🤍"))
     }
   }
 
