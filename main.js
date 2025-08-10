@@ -148,12 +148,8 @@ client.on("messageCreate", async (message) => {
     });
 
     const num = parseInt(message.content);
-    if (isNaN(num)) {
-      await message.react("❌")
-      await resetCount(message, countData, "*sorry, that isn't a number, we'll now restart from 1.*")
-      return;
-    }
 
+    
     if (message.author.id === countData.lastUserId) {
       await message.react("❔").then(message.reply("*you can't count twice in a row!*"))
       return;
