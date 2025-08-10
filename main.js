@@ -294,7 +294,29 @@ try {
 
   }
 });
-// Login
+
+client.on("guildMemberAdd", async (member) => {
+  let welcomeMsg = new MessageEmbed()
+  .setColor("GREEN")
+  .setAuthor({ name: 'say hi!', iconURL: member.user.displayAvatarURL() })
+  .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+  .setDescription(`\`everyone, say hi to our newest member, ${member.user.username} (aka ${member.user.displayName}).\``)
+  .setTimestamp()
+
+  client.channels.fetch("1198671834871251004").then(ch => ch.send({embeds: [welcomeMsg]}))
+})
+
+client.on("guildMemberRemove", async (member) => {
+  let goodbyeMsg = new MessageEmbed()
+  .setColor("DARK_NAVY")
+  .setAuthor({ name: 'oh..', iconURL: member.user.displayAvatarURL() })
+  .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+  .setDescription(`\`i guess it's goodbye to ${member.user.username} (aka ${member.user.displayName}).\``)
+  .setTimestamp()
+
+  client.channels.fetch("1198671834871251004").then(ch => ch.send({embeds: [goodbyeMsg]}))})
+
+
 client.login(process.env.DISCORD_TOKEN);
 
 // Keep-alive web server (Render requires a listening port)
