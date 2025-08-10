@@ -120,58 +120,65 @@ client.on("messageCreate", async (message) => {
   }
 
   // === COUNTING CHANNEL HANDLING ===
-  if (isCountingChannel) {
+if (isCountingChannel) {
+  const content = message.content.trim();
 
-    const content = message.content.trim();
+  // Check if it's a command
+  if (content.startsWith(config.prefix)) {
+    const commandName = content.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
 
-    // If command was used
-    if (content.startsWith(config.prefix)) {
-      const commandName = content.slice(config.prefix.length).trim().split(/ +/).shift().toLowerCase();
-
-      if (commandName === "purge") {
-        // Allow purge in counting channel
-        const args = content.slice(config.prefix.length).trim().split(/ +/).slice(1);
-        const command = client.commands.get(commandName);
-        if (command) await command.execute(client, message, args);
-        return;
-      }
-
-      // Block all other commands
-      await message.delete().catch(() => {});
-      return message.author.send("⚠️ You can't use commands in the counting channel.");
-    }
-
-    const countData = await Count.findOne({ channelId: message.channel.id }) || new Count({
-      channelId: message.channel.id,
-      currentNumber: 1,
-      lastUserId: null
-    });
-
-    const num = parseInt(message.content);
-
-    
-    if (message.author.id === countData.lastUserId) {
-      await message.react("❔").then(message.reply("*you can't count twice in a row!*"))
+    if (commandName === "purge") {
+      const args = content.slice(config.prefix.length).trim().split(/ +/).slice(1);
+      const command = client.commands.get(commandName);
+      if (command) await command.execute(client, message, args);
       return;
     }
 
-    if (num !== countData.currentNumber) {
-      await message.react("❌")
-      await resetCount(
-        message,
-        countData,
-        `*oooo, unfortunatly that is the wrong number, we were looking for* **${countData.currentNumber}**. *restarting from 1.*`
-      );
-      return;
-    }
+    // Block all other commands
+    await message.delete().catch(() => {});
+    return message.author.send("⚠️ You can't use commands in the counting channel.");
+  }
 
-    // ✅ Success
-    await message.react("✅");
-    countData.currentNumber++;
-    countData.lastUserId = message.author.id;
-    await countData.save();
+  // Check if message is only a number (int or float)
+  const num = parseFloat(content);
+  const isOnlyNumber = !isNaN(num) && content.match(/^[-+]?\d*\.?\d+$/);
+
+  if (!isOnlyNumber) {
+    // Just a message, not a number → ignore for counting
     return;
   }
+
+  let countData = await Count.findOne({ channelId: message.channel.id });
+
+  if (!countData) {
+    console.warn(`[WARN] No count data found in DB for channel ${message.channel.id}`);
+    return message.channel.send("⚠️ Counting data missing. Please alert a moderator.");
+  }
+
+  if (message.author.id === countData.lastUserId) {
+    await message.react("❔");
+    await message.reply("*you can't count twice in a row!*");
+    return;
+  }
+
+  if (num !== countData.currentNumber) {
+    await message.react("❌");
+    await resetCount(
+      message,
+      countData,
+      `*oooo, unfortunately that is the wrong number, we were looking for* **${countData.currentNumber}**. *restarting from 1.*`
+    );
+    return;
+  }
+
+  // ✅ Success
+  await message.react("✅");
+  countData.currentNumber++;
+  countData.lastUserId = message.author.id;
+  await countData.save();
+  return;
+}
+
 
   // === CDN GIF TRIGGER ===
   if (message.content.includes("https://cdn.discordapp.com/attachments/1198671834871251004/1402793329095086242/issa.gif")) {
