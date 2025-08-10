@@ -121,6 +121,7 @@ client.on("messageCreate", async (message) => {
 
   // === COUNTING CHANNEL HANDLING ===
   if (isCountingChannel) {
+
     const content = message.content.trim();
 
     // If command was used
@@ -154,8 +155,7 @@ client.on("messageCreate", async (message) => {
     }
 
     if (message.author.id === countData.lastUserId) {
-      await message.react("❔")
-      await resetCount(message, countData, "*you can't count twice in a row!*");
+      await message.react("❔").then(message.reply("*you can't count twice in a row!*"))
       return;
     }
 
