@@ -117,17 +117,13 @@ module.exports = {
 
         await interaction.deferUpdate();
         prompt.delete().catch(() => { });
-        // Delete command message if possible/desired
         message.delete().catch(() => { });
 
         try {
             const webhook = new WebhookClient({ url });
             const payload = {
-                username: "HOOK_NAME", // Placeholder? User requested "." before. I should use "."?
-                // Step 573: "makje it the server pfp as the hook pfp and "." as the name"
-                // So I recall that logic.
                 username: ".",
-                avatarURL: message.guild.iconURL({ dynamic: true }) || message.author.displayAvatarURL({ dynamic: true })
+                avatarURL: message.guild.iconURL({ dynamic: true })
             };
 
             if (interaction.customId === "hook_embed") {
