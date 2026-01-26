@@ -2,15 +2,31 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports = (client) => {
-    const commandFiles = fs.readdirSync(path.join(__dirname, "../commands")).filter(file => file.endsWith(".js"));
+    const loadedCommands = [];
+    const commandsPath = path.join(__dirname, "../commands");
 
-    for (const file of commandFiles) {
-        const command = require(`../commands/${file}`);
-        if (command.name && typeof command.execute === "function") {
-            client.commands.set(command.name, command);
-            console.log(`Sucessfully loaded the '${command.name}' command.`);
-        } else {
-            console.warn(`[⚠️] Skipped invalid command file: ${file}`);
+    // Recursive function to read commands from nested folders
+    const readCommands = (dir) => {
+        const files = fs.readdirSync(dir, { withFileTypes: true });
+
+        for (const file of files) {
+            if (file.isDirectory()) {
+                readCommands(path.join(dir, file.name));
+            } else if (file.name.endsWith(".js")) {
+                const command = require(path.join(dir, file.name));
+                if (command.name && typeof command.execute === "function") {
+                    client.commands.set(command.name, command);
+                    loadedCommands.push(command.name);
+                } else {
+                    console.warn(`[⚠️] Skipped invalid command file: ${file.name}`);
+                }
+            }
         }
+    };
+
+    if (fs.existsSync(commandsPath)) {
+        readCommands(commandsPath);
     }
+
+    return loadedCommands;
 };

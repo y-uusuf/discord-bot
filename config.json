@@ -1,6 +1,6 @@
 {
     "prefix": ",",
-    "activityName": "???",
+    "activityName": "',help' for cmds.",
     "activityType": "STREAMING",
-    "activityStatus": "dnd"
+    "activityStatus": "idle"
 }
