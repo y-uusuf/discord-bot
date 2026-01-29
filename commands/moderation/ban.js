@@ -4,7 +4,9 @@ module.exports = {
   name: "ban",
   async execute(client, message, args) {
     if (!message.member.permissions.has("BAN_MEMBERS")) {
-      return message.reply("*sorry, you can't ban anyone.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: you are missing **Ban Members** permission(s) to run this command`);
+      return message.reply({ embeds: [embed] });
     }
 
     const targetIdOrMention = args[0];
@@ -12,12 +14,7 @@ module.exports = {
 
     if (!targetIdOrMention) {
       const embed = new MessageEmbed()
-        .setTitle("ban command")
-        .setDescription("*bans a member from the server.*")
-        .addFields(
-          { name: "```usage```", value: "`,ban @user [reason]`", inline: false },
-          { name: "```examples```", value: "`,ban @yusuf spamming`\n`,ban 123456789 bad`", inline: false }
-        );
+        .setDescription(`🔨 <@${message.author.id}>: bans a member from the server.\n\n**usage:** \`,ban @user [reason]\`\n**example:** \`,ban @yusuf spamming\``);
       return message.reply({ embeds: [embed] });
     }
 
@@ -30,23 +27,22 @@ module.exports = {
       try {
         userToBan = await client.users.fetch(targetIdOrMention);
       } catch {
-        return message.reply(`*sorry, couldn't find a user with the id '**${targetIdOrMention}**'.*`)
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: couldn't find a user with the id **${targetIdOrMention}**`);
+        return message.reply({ embeds: [embed] });
       }
     }
 
     const memberToBan = message.guild.members.cache.get(userToBan.id);
     if (memberToBan && !memberToBan.bannable) {
-      return message.reply("*sorry, i can't ban them, maybe make my role higher?*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: i can't ban them, maybe make my role higher?`);
+      return message.reply({ embeds: [embed] });
     }
 
     // Confirmation embed
     const confirmEmbed = new MessageEmbed()
-      .setTitle("confirm ban?")
-      .setDescription(`*are you sure you want to ban **${userToBan.tag || userToBan.username}**?*`)
-      .addFields(
-        { name: "```id:```", value: `\`${userToBan.id}\``, inline: true },
-        { name: "```why?```", value: `*${reason}*`, inline: true }
-      );
+      .setDescription(`⚠️ <@${message.author.id}>: are you sure you want to ban **${userToBan.tag || userToBan.username}**? (reason: ${reason})`);
 
     const row = new MessageActionRow()
       .addComponents(
@@ -69,29 +65,22 @@ module.exports = {
 
       if (interaction.customId === "ban_confirm") {
         await message.guild.members.ban(userToBan.id, { reason });
-        const successEmbed = new MessageEmbed()
-          .setTitle("banned successfully.")
-          .addFields(
-            { name: "```id:```", value: `\`${userToBan.id}\``, inline: true },
-            { name: "```tag?```", value: `\`${userToBan.tag || "Unknown"}\``, inline: true },
-            { name: "```why?```", value: `*${reason}*`, inline: true }
-          );
-        await interaction.update({ embeds: [successEmbed], components: [] });
+        await interaction.update({ content: "👍", embeds: [], components: [] });
       } else {
         const cancelEmbed = new MessageEmbed()
-          .setTitle("ban cancelled.")
-          .setDescription(`*${userToBan.tag || userToBan.username} was not banned.*`);
+          .setDescription(`❌ <@${message.author.id}>: ${userToBan.tag || userToBan.username} was not banned`);
         await interaction.update({ embeds: [cancelEmbed], components: [] });
       }
     } catch (error) {
       if (error.code === "INTERACTION_COLLECTOR_ERROR") {
         const timeoutEmbed = new MessageEmbed()
-          .setTitle("ban timed out.")
-          .setDescription("*no response received, ban cancelled.*");
+          .setDescription(`⏰ <@${message.author.id}>: no response received, ban cancelled`);
         await confirmMsg.edit({ embeds: [timeoutEmbed], components: [] });
       } else {
         console.error(error);
-        message.reply("*sorry, i couldn't ban them.*");
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: couldn't ban them`);
+        message.reply({ embeds: [embed] });
       }
     }
   },

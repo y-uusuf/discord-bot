@@ -4,11 +4,11 @@ module.exports = {
   name: "mic",
   async execute(client, message, args) {
     if (!message.member.permissions.has("MUTE_MEMBERS")) {
-      return message.reply("*you don't have permission to unmute members.*");
+      return message.reply("you don't have permission to unmute members.");
     }
 
     if (!args[0]) {
-      return message.reply("*please mention a user, channel, provide an ID, or use `all`.*");
+      return message.reply("please mention a user, channel, provide an ID, or use `all`.");
     }
 
     // Unmute all members in all voice channels
@@ -23,11 +23,11 @@ module.exports = {
       });
 
       if (unmuted.length === 0) {
-        return message.reply("*no one is in a voice channel, or everyone is already unmuted.*");
+        return message.reply("no one is in a voice channel, or everyone is already unmuted.");
       }
 
       const embed = new MessageEmbed()
-        .setTitle("unmuted everyone in voice channels")
+        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setDescription(unmuted.join("\n"))
         .setFooter({ text: `total unmuted: ${unmuted.length} | by ${message.author.tag}` })
         .setTimestamp();
@@ -48,11 +48,11 @@ module.exports = {
       });
 
       if (unmuted.length === 0) {
-        return message.reply("*no one is muted in that channel.*");
+        return message.reply("no one is muted in that channel.");
       }
 
       const embed = new MessageEmbed()
-        .setTitle(`unmuted everyone in ${channel.name}`)
+        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setDescription(unmuted.join("\n"))
         .setFooter({ text: `total unmuted: ${unmuted.length} | by ${message.author.tag}` })
         .setTimestamp();
@@ -64,22 +64,22 @@ module.exports = {
     const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
 
     if (!target) {
-      return message.reply("*please mention a valid user or provide their ID.*");
+      return message.reply("please mention a valid user or provide their ID.");
     }
 
     if (!target.voice.channel) {
-      return message.reply("*that user is not in a voice channel.*");
+      return message.reply("that user is not in a voice channel.");
     }
 
     if (!target.voice.serverMute) {
-      return message.reply("*that user is not server muted.*");
+      return message.reply("that user is not server muted.");
     }
 
     try {
       await target.voice.setMute(false, `Successfully unmuted.`);
 
       const embed = new MessageEmbed()
-        .setTitle("user server unmuted.")
+        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .addFields(
           { name: "```user```", value: `\`${target.user.tag}\``, inline: true },
           { name: "```by```", value: `\`${message.author.tag}\``, inline: true }
@@ -90,7 +90,7 @@ module.exports = {
       return message.channel.send({ embeds: [embed] });
     } catch (error) {
       console.error(error);
-      return message.reply("*i couldn't unmute that user.*");
+      return message.reply("i couldn't unmute that user.");
     }
   },
 };

@@ -4,11 +4,11 @@ module.exports = {
   name: "disc",
   async execute(client, message, args) {
     if (!message.member.permissions.has("MOVE_MEMBERS")) {
-      return message.reply("*you don't have permission to disconnect members.*");
+      return message.reply("you don't have permission to disconnect members.");
     }
 
     if (!args[0]) {
-      return message.reply("*please mention a user, a voice channel, provide an ID, or use `all`.*");
+      return message.reply("please mention a user, a voice channel, provide an ID, or use `all`.");
     }
 
     // Disconnect everyone in all voice channels
@@ -23,11 +23,11 @@ module.exports = {
       });
 
       if (disconnected.length === 0) {
-        return message.reply("*no one is in a voice channel to disconnect.*");
+        return message.reply("no one is in a voice channel to disconnect.");
       }
 
       const embed = new MessageEmbed()
-        .setTitle("disconnected everyone in voice channels.")
+        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setDescription(disconnected.join("\n"))
         .setFooter({ text: `total disconnected: ${disconnected.length} | by ${message.author.tag}` })
         .setTimestamp();
@@ -46,11 +46,11 @@ module.exports = {
       });
 
       if (disconnected.length === 0) {
-        return message.reply(`*no one is connected to \`${channel.name}\`.*`);
+        return message.reply(`no one is connected to \`${channel.name}\`.`);
       }
 
       const embed = new MessageEmbed()
-        .setTitle(`disconnected everyone in ${channel.name}.`)
+        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setDescription(disconnected.join("\n"))
         .setFooter({ text: `total disconnected: ${disconnected.length} | by ${message.author.tag}` })
         .setTimestamp();
@@ -62,18 +62,18 @@ module.exports = {
     const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
 
     if (!target) {
-      return message.reply("*please mention a valid user or provide their ID.*");
+      return message.reply("please mention a valid user or provide their ID.");
     }
 
     if (!target.voice.channel) {
-      return message.reply("*that user is not in a voice channel.*");
+      return message.reply("that user is not in a voice channel.");
     }
 
     try {
       await target.voice.disconnect();
 
       const embed = new MessageEmbed()
-        .setTitle("user disconnected.")
+        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .addFields(
           { name: "```user```", value: `\`${target.user.tag}\``, inline: true },
           { name: "```by```", value: `\`${message.author.tag}\``, inline: true }
@@ -85,7 +85,7 @@ module.exports = {
 
     } catch (err) {
       console.error(err);
-      return message.reply("*i couldn't disconnect the user.*");
+      return message.reply("i couldn't disconnect the user.");
     }
   },
 };

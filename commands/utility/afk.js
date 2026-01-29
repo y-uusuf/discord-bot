@@ -10,26 +10,27 @@ module.exports = {
       const existing = await AFK.findOne({ userID: message.author.id });
 
       if (existing) {
-        return message.reply("*you are already marked as AFK.*");
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: you are already marked as AFK`);
+        return message.reply({ embeds: [embed] });
       }
 
       await AFK.create({
         userID: message.author.id,
         reason,
-        timestamp: new Date(), // Used for duration tracking
+        timestamp: new Date(),
       });
 
       const embed = new MessageEmbed()
-        .setAuthor({ name: "okay, you're now afk.", iconURL: message.author.displayAvatarURL({ dynamic: true }) })
-        .setDescription(`**<@${message.author.id}>** is now afk.`)
-        .addField("```reason?```", `\`${reason}\``, true)
-        .setFooter({ text: "note: you will be removed from AFK when you send a message." });
+        .setDescription(`💤 <@${message.author.id}>: you're now AFK - ${reason}`);
 
       return message.channel.send({ embeds: [embed] });
 
     } catch (err) {
       console.error(err);
-      return message.reply("*there was an error setting your AFK status.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: there was an error setting your AFK status`);
+      return message.reply({ embeds: [embed] });
     }
   },
 };

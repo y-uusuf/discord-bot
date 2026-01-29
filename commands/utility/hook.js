@@ -6,7 +6,9 @@ module.exports = {
     description: "Send messages via webhook or manage saved webhooks.",
     async execute(client, message, args) {
         if (!message.member.permissions.has("MANAGE_WEBHOOKS")) {
-            return message.reply("*sorry, you need 'Manage Webhooks' permission to use this.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: you are missing **Manage Webhooks** permission(s) to run this command`);
+            return message.reply({ embeds: [embed] });
         }
 
         const sub = args[0]?.toLowerCase();
@@ -17,13 +19,19 @@ module.exports = {
             const url = args[2];
 
             if (!name || !url) {
-                return message.reply("*usage: `,hook add <name> <url>`*");
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: usage: \`,hook add <name> <url>\``);
+                return message.reply({ embeds: [embed] });
             }
             if (!url.startsWith("http")) {
-                return message.reply("*please provide a valid webhook URL.*");
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: please provide a valid webhook URL`);
+                return message.reply({ embeds: [embed] });
             }
             if (["add", "remove", "list"].includes(name.toLowerCase())) {
-                return message.reply("*that name is reserved.*");
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: that name is reserved`);
+                return message.reply({ embeds: [embed] });
             }
 
             await Settings.findOneAndUpdate(
@@ -32,13 +40,19 @@ module.exports = {
                 { upsert: true }
             );
 
-            return message.reply(`*saved webhook as **${name.toLowerCase()}**.*`);
+            const embed = new MessageEmbed()
+                .setDescription(`🪝 <@${message.author.id}>: saved webhook as **${name.toLowerCase()}**`);
+            return message.reply({ embeds: [embed] });
         }
 
         // --- REMOVE WEBHOOK ---
         if (sub === "remove") {
             const name = args[1];
-            if (!name) return message.reply("*usage: `,hook remove <name>`*");
+            if (!name) {
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: usage: \`,hook remove <name>\``);
+                return message.reply({ embeds: [embed] });
+            }
 
             await Settings.findOneAndUpdate(
                 { guildId: message.guild.id },
@@ -46,7 +60,9 @@ module.exports = {
                 { upsert: true }
             );
 
-            return message.reply(`*removed webhook **${name.toLowerCase()}**.*`);
+            const embed = new MessageEmbed()
+                .setDescription(`🪝 <@${message.author.id}>: removed webhook **${name.toLowerCase()}**`);
+            return message.reply({ embeds: [embed] });
         }
 
         // --- LIST WEBHOOKS ---
@@ -55,16 +71,16 @@ module.exports = {
             const webhooks = settings?.savedWebhooks;
 
             if (!webhooks || webhooks.size === 0) {
-                return message.reply("*no saved webhooks.*");
+                const embed = new MessageEmbed()
+                    .setDescription(`📋 <@${message.author.id}>: no saved webhooks`);
+                return message.reply({ embeds: [embed] });
             }
 
-            // Convert Map to array keys
             const keys = Array.from(webhooks.keys());
             const list = keys.map(k => `\`${k}\``).join(", ");
 
             const embed = new MessageEmbed()
-                .setTitle("saved webhooks")
-                .setDescription(list)
+                .setDescription(`📋 <@${message.author.id}>: saved webhooks: ${list}`);
 
             return message.reply({ embeds: [embed] });
         }
@@ -74,7 +90,6 @@ module.exports = {
         let content = args.slice(1).join(" ");
         let usedSaved = false;
 
-        // Check if arg[0] is a saved name
         if (url && !url.startsWith("http")) {
             const settings = await Settings.findOne({ guildId: message.guild.id });
             if (settings?.savedWebhooks?.has(url.toLowerCase())) {
@@ -85,24 +100,17 @@ module.exports = {
 
         if (!url || !content || (!url.startsWith("http") && !usedSaved)) {
             const embed = new MessageEmbed()
-                .setTitle("hook command")
-                .setDescription("*send messages via webhook.*")
-                .addFields(
-                    { name: "```usage```", value: "`,hook <url/name> <message>`", inline: false },
-                    { name: "```manage```", value: "`,hook add <name> <url>`\n`,hook remove <name>`\n`,hook list`", inline: false },
-                    { name: "```examples```", value: "`,hook myhook hello!`\n`,hook https://... hello!`", inline: false }
-                );
+                .setDescription(`🪝 <@${message.author.id}>: send messages via webhook.\n\n**usage:** \`,hook <url/name> <message>\`\n**manage:** \`,hook add/remove/list\``);
             return message.reply({ embeds: [embed] });
         }
 
-        // Prompt for format
         const row = new MessageActionRow().addComponents(
             new MessageButton().setCustomId("hook_embed").setLabel("Embed").setStyle("PRIMARY"),
             new MessageButton().setCustomId("hook_raw").setLabel("Raw Text").setStyle("SECONDARY")
         );
 
         const prompt = await message.reply({
-            content: "*how should this message be sent?*",
+            embeds: [new MessageEmbed().setDescription(`🪝 <@${message.author.id}>: how should this message be sent?`)],
             components: [row]
         });
 
@@ -128,10 +136,6 @@ module.exports = {
 
             if (interaction.customId === "hook_embed") {
                 const embed = new MessageEmbed().setDescription(content);
-                // Colorless embed as requested in Step 573 ("embed the message no colour") 
-                // But wait, Step 634 requested "change to no colour" for INVITE command. 
-                // But Step 573 requested "no colour" for HOOK too.
-                // I will leave it colorless (default).
                 payload.embeds = [embed];
             } else {
                 payload.content = content;
@@ -140,7 +144,9 @@ module.exports = {
             await webhook.send(payload);
         } catch (e) {
             console.error(e);
-            message.channel.send("*invalid webhook URL or missing permissions.*").then(m => setTimeout(() => m.delete(), 5000));
+            const errEmbed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: invalid webhook URL or missing permissions`);
+            message.channel.send({ embeds: [errEmbed] }).then(m => setTimeout(() => m.delete(), 5000));
         }
     }
 };

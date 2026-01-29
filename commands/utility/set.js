@@ -5,13 +5,14 @@ module.exports = {
     name: "set",
     async execute(client, message, args) {
         if (!message.member.permissions.has("MANAGE_GUILD")) {
-            return message.reply("*sorry, you need 'Manage Server' permission to configure settings.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: you are missing **Manage Server** permission(s) to run this command`);
+            return message.reply({ embeds: [embed] });
         }
 
         const type = args[0]?.toLowerCase();
         const value = args[1];
 
-        // Valid setting types
         const validTypes = {
             mute: { field: "muteRole", name: "mute role", isRole: true },
             trialrole: { field: "trialRole", name: "trial role", isRole: true },
@@ -27,17 +28,7 @@ module.exports = {
         // Show help if no args
         if (!type) {
             const embed = new MessageEmbed()
-                .setTitle("server settings")
-                .setDescription("*configure server settings stored in the database.*")
-                .addFields(
-                    { name: "```usage```", value: "`,set <type> <value>`", inline: false },
-                    { name: "```roles```", value: "`mute` - mute role\n`trialrole` - trial role", inline: false },
-                    { name: "```channels```", value: "`log` - log channel\n`welcome` - welcome channel\n`confess` - confess channel\n`trial` - trial channel\n`counting` - counting channel\n`level` - level up channel", inline: false },
-                    { name: "```misc```", value: "`prefix` - bot prefix", inline: false },
-                    { name: "```examples```", value: "`,set mute @Muted`\n`,set log #logs`\n`,set prefix !`", inline: false },
-                    { name: "```view```", value: "`,set view` - see current settings", inline: false },
-                    { name: "```remove```", value: "`,set remove <type>` - remove a setting", inline: false }
-                );
+                .setDescription(`⚙️ <@${message.author.id}>: configure server settings.\n\n**usage:** \`,set <type> <value>\`\n**roles:** mute, trialrole\n**channels:** log, welcome, confess, trial, counting, level\n**misc:** prefix\n**other:** \`,set view\` or \`,set remove <type>\``);
             return message.reply({ embeds: [embed] });
         }
 
@@ -45,22 +36,20 @@ module.exports = {
         if (type === "view") {
             const config = await Settings.findOne({ guildId: message.guild.id });
             if (!config) {
-                return message.reply("*no settings configured for this server.*");
+                const embed = new MessageEmbed()
+                    .setDescription(`⚙️ <@${message.author.id}>: no settings configured for this server`);
+                return message.reply({ embeds: [embed] });
             }
 
-            const embed = new MessageEmbed()
-                .setTitle("current server settings")
-                .addFields(
-                    { name: "```prefix```", value: config.prefix ? `\`${config.prefix}\`` : "`not set`", inline: true },
-                    { name: "```mute role```", value: config.muteRole ? `<@&${config.muteRole}>` : "`not set`", inline: true },
-                    { name: "```log channel```", value: config.logChannel ? `<#${config.logChannel}>` : "`not set`", inline: true },
-                    { name: "```welcome channel```", value: config.welcomeChannel ? `<#${config.welcomeChannel}>` : "`not set`", inline: true },
-                    { name: "```confess channel```", value: config.confessChannel ? `<#${config.confessChannel}>` : "`not set`", inline: true },
-                    { name: "```trial channel```", value: config.trialChannel ? `<#${config.trialChannel}>` : "`not set`", inline: true },
-                    { name: "```trial role```", value: config.trialRole ? `<@&${config.trialRole}>` : "`not set`", inline: true },
-                    { name: "```counting channel```", value: config.countingChannel ? `<#${config.countingChannel}>` : "`not set`", inline: true },
-                    { name: "```level channel```", value: config.levelChannel ? `<#${config.levelChannel}>` : "`not set`", inline: true }
-                );
+            let info = `⚙️ <@${message.author.id}>: server settings\n\n`;
+            info += `**prefix:** ${config.prefix || "not set"}\n`;
+            info += `**mute role:** ${config.muteRole ? `<@&${config.muteRole}>` : "not set"}\n`;
+            info += `**log channel:** ${config.logChannel ? `<#${config.logChannel}>` : "not set"}\n`;
+            info += `**welcome channel:** ${config.welcomeChannel ? `<#${config.welcomeChannel}>` : "not set"}\n`;
+            info += `**trial channel:** ${config.trialChannel ? `<#${config.trialChannel}>` : "not set"}\n`;
+            info += `**trial role:** ${config.trialRole ? `<@&${config.trialRole}>` : "not set"}`;
+
+            const embed = new MessageEmbed().setDescription(info);
             return message.reply({ embeds: [embed] });
         }
 
@@ -69,7 +58,9 @@ module.exports = {
             const removeType = args[1]?.toLowerCase();
 
             if (!removeType || !validTypes[removeType]) {
-                return message.reply(`*please specify which setting to remove: ${Object.keys(validTypes).join(", ")}*`);
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: please specify which setting to remove: ${Object.keys(validTypes).join(", ")}`);
+                return message.reply({ embeds: [embed] });
             }
 
             const setting = validTypes[removeType];
@@ -79,16 +70,22 @@ module.exports = {
                 { upsert: true }
             );
 
-            return message.reply(`*removed the **${setting.name}** setting.*`);
+            const embed = new MessageEmbed()
+                .setDescription(`⚙️ <@${message.author.id}>: removed the **${setting.name}** setting`);
+            return message.reply({ embeds: [embed] });
         }
 
         // Set a value
         if (!validTypes[type]) {
-            return message.reply(`*invalid type. use: ${Object.keys(validTypes).join(", ")}*`);
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: invalid type. use: ${Object.keys(validTypes).join(", ")}`);
+            return message.reply({ embeds: [embed] });
         }
 
         if (!value) {
-            return message.reply("*please provide a value (role, channel, or text).*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: please provide a value`);
+            return message.reply({ embeds: [embed] });
         }
 
         const setting = validTypes[type];
@@ -97,17 +94,19 @@ module.exports = {
         if (setting.isString) {
             id = value;
         } else if (setting.isRole) {
-            // Parse role mention or ID
             const role = message.mentions.roles.first() || message.guild.roles.cache.get(value.replace(/[<@&>]/g, ""));
             if (!role) {
-                return message.reply("*please mention a valid role or provide a role ID.*");
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: please mention a valid role or provide a role ID`);
+                return message.reply({ embeds: [embed] });
             }
             id = role.id;
         } else if (setting.isChannel) {
-            // Parse channel mention or ID
             const channel = message.mentions.channels.first() || message.guild.channels.cache.get(value.replace(/[<#>]/g, ""));
             if (!channel) {
-                return message.reply("*please mention a valid channel or provide a channel ID.*");
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: please mention a valid channel or provide a channel ID`);
+                return message.reply({ embeds: [embed] });
             }
             id = channel.id;
         }
@@ -118,7 +117,6 @@ module.exports = {
             { upsert: true }
         );
 
-        // Enforce privacy immediately if setting trial channel
         if (setting.field === "trialChannel") {
             try {
                 const channel = message.guild.channels.cache.get(id);
@@ -132,9 +130,7 @@ module.exports = {
         }
 
         const embed = new MessageEmbed()
-            .setTitle("setting configured")
-            .setDescription(`*the **${setting.name}** has been set to ${setting.isString ? `\`${id}\`` : (setting.isRole ? `<@&${id}>` : `<#${id}>`)}.*`);
-
+            .setDescription(`⚙️ <@${message.author.id}>: set **${setting.name}** to ${setting.isString ? `\`${id}\`` : (setting.isRole ? `<@&${id}>` : `<#${id}>`)}`);
         return message.reply({ embeds: [embed] });
     },
 };

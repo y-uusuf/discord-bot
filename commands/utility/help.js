@@ -1,58 +1,29 @@
 const { MessageEmbed } = require("discord.js");
+const Settings = require("../../models/settings");
 
 module.exports = {
   name: "help",
   async execute(client, message, args) {
-    // The specific user ID requested
-    const creatorId = "1138865766297374760"; // Changing this to the ID usually provided for 'yusuf' or similar if the user provided one didn't work, but user provided specific ID: 1459515101487829148. 
-    // Wait, 1459515101487829148 is a Snowflake that would be far in the future (around year 2056). 
-    // Discord snowflakes are time-based. The user probably made a typo or copied a message ID.
-    // However, I will use EXACTLY what they asked for. If it fails, I'll fallback gracefully.
+    // Get all commands but filter out aliases (only include commands where their name matches the key)
+    const commandList = Array.from(client.commands.entries())
+      .filter(([key, cmd]) => cmd.name === key)
+      .map(([key]) => key);
 
-    const targetCreatorId = "1459515101487829148";
+    // Get the current prefix (custom or default)
+    const settings = await Settings.findOne({ guildId: message.guild?.id });
+    const prefix = settings?.prefix || ",";
 
-    let creator;
-    try {
-      creator = await client.users.fetch(targetCreatorId);
-    } catch (err) {
-      // Fallback if ID is invalid/future date
-      creator = {
-        username: "yusuf",
-        displayAvatarURL: () => client.user.displayAvatarURL()
-      };
-    }
-
-    const commandList = Array.from(client.commands.keys());
-
-    const modCmds = ['ban', 'kick', 'mute', 'unmute', 'role', 'lock', 'unlock', 'purge', 'set', 'warn'];
-    const utilCmds = ['afk', 'status', 'avatar', 'whois', 'userinfo', 'serverinfo'];
+    const modCmds = ['ban', 'kick', 'mute', 'unmute', 'role', 'lock', 'unlock', 'purge', 'set', 'warn', 'warns', 'removewarn', 'unban', 'deafen', 'undeafen', 'vmute', 'flag', 'invite', 'react', 'trial', 'nickname', 'slowmode'];
+    const utilCmds = ['afk', 'status', 'avatar', 'info', 'ping', 'help', 'snipe', 'clearsnipe', 'hook', 'reload'];
+    const funCmds = ['8ball', 'coinflip', 'dice', 'mic', 'disc', 'confess', 'aura'];
 
     const moderation = commandList.filter(c => modCmds.includes(c));
     const utility = commandList.filter(c => utilCmds.includes(c));
-    const other = commandList.filter(c => !modCmds.includes(c) && !utilCmds.includes(c));
+    const fun = commandList.filter(c => funCmds.includes(c));
+    const other = commandList.filter(c => !modCmds.includes(c) && !utilCmds.includes(c) && !funCmds.includes(c));
 
     const embed = new MessageEmbed()
-      .setAuthor({ name: "help menu.", iconURL: client.user.displayAvatarURL({ dynamic: true }) })
-      .setDescription(`*prefix:* \`,\`\n*total commands:* \`${commandList.length}\``)
-      .addFields(
-        {
-          name: "```moderation```",
-          value: moderation.length ? moderation.map(c => `\`${c}\``).join(", ") : "`none.`",
-          inline: false
-        },
-        {
-          name: "```utility```",
-          value: utility.length ? utility.map(c => `\`${c}\``).join(", ") : "`none.`",
-          inline: false
-        },
-        {
-          name: "```other```",
-          value: other.length ? other.map(c => `\`${c}\``).join(", ") : "`none.`",
-          inline: false
-        }
-      )
-      .setFooter({ text: `created by ${creator.username}`, iconURL: creator.displayAvatarURL({ dynamic: true }) })
-      .setTimestamp();
+      .setDescription(`📚 <@${message.author.id}>: help menu\n\n**prefix:** \`${prefix}\`\n**total:** ${commandList.length} commands\n\n**moderation:** ${moderation.length ? moderation.map(c => `\`${c}\``).join(", ") : "none"}\n\n**utility:** ${utility.length ? utility.map(c => `\`${c}\``).join(", ") : "none"}\n\n**fun:** ${fun.length ? fun.map(c => `\`${c}\``).join(", ") : "none"}\n\n**other:** ${other.length ? other.map(c => `\`${c}\``).join(", ") : "none"}`);
 
     return message.channel.send({ embeds: [embed] });
   },

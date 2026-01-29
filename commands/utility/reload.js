@@ -1,22 +1,19 @@
 const fs = require('fs');
 const path = require('path');
+const { MessageEmbed } = require('discord.js');
 
 module.exports = {
   name: 'reload',
   async execute(client, message, args) {
-    if (!message.author.id === '1459515101487829148') {
-      return message.reply("*sorry, you don't have permission to reload commands.*");
+    if (message.author.id !== '1459515101487829148') {
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: you don't have permission to reload commands`);
+      return message.reply({ embeds: [embed] });
     }
 
-    const { MessageEmbed } = require('discord.js');
     if (!args.length) {
       const embed = new MessageEmbed()
-        .setTitle("reload command")
-        .setDescription("*reloads a command file.*")
-        .addFields(
-          { name: "```usage```", value: "`,reload <command>`", inline: false },
-          { name: "```examples```", value: "`,reload avatar`", inline: false }
-        );
+        .setDescription(`🔄 <@${message.author.id}>: reloads a command file.\n\n**usage:** \`,reload <command>\`\n**example:** \`,reload avatar\``);
       return message.reply({ embeds: [embed] });
     }
 
@@ -24,21 +21,24 @@ module.exports = {
     const commandPath = path.join(__dirname, `${commandName}.js`);
 
     if (!fs.existsSync(commandPath)) {
-      return message.reply(`*the command \`${commandName}\` does not exist.*`);
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: the command \`${commandName}\` does not exist`);
+      return message.reply({ embeds: [embed] });
     }
 
     try {
-      // Remove the cached version of the command
       delete require.cache[require.resolve(commandPath)];
-
-      // Reload the command
       const newCommand = require(commandPath);
       client.commands.set(newCommand.name, newCommand);
 
-      message.reply(`*the command \`${commandName}\` was successfully reloaded.*`);
+      const embed = new MessageEmbed()
+        .setDescription(`🔄 <@${message.author.id}>: reloaded \`${commandName}\``);
+      message.reply({ embeds: [embed] });
     } catch (error) {
       console.error(error);
-      message.reply(`*sorry, i couldn't reload \`${commandName}\`.*`);
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: couldn't reload \`${commandName}\``);
+      message.reply({ embeds: [embed] });
     }
   },
 };

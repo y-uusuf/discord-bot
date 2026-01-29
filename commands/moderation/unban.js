@@ -1,39 +1,72 @@
-const { MessageEmbed } = require("discord.js");
+const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
 
 module.exports = {
   name: "unban",
   async execute(client, message, args) {
     if (!message.member.permissions.has("BAN_MEMBERS")) {
-      return message.reply("*sorry, you can't unban anyone.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: you are missing **Ban Members** permission(s) to run this command`);
+      return message.reply({ embeds: [embed] });
     }
 
     const userId = args[0];
     if (!userId) {
       const embed = new MessageEmbed()
-        .setTitle("unban command")
-        .setDescription("*unbans a previously banned member.*")
-        .addFields(
-          { name: "```usage```", value: "`,unban <id>`", inline: false },
-          { name: "```examples```", value: "`,unban 123456789`", inline: false }
-        );
+        .setDescription(`🔓 <@${message.author.id}>: unbans a previously banned member.\n\n**usage:** \`,unban <id>\`\n**example:** \`,unban 123456789\``);
       return message.reply({ embeds: [embed] });
     }
 
+    let user;
     try {
-      const user = await message.guild.bans.fetch(userId);
-      await message.guild.members.unban(user.user);
-
+      user = await message.guild.bans.fetch(userId);
+    } catch {
       const embed = new MessageEmbed()
-        .setTitle("unbanned successfully.")
-        .addFields(
-          { name: "```id:```", value: `\`${userId}\``, inline: true },
-          { name: "```tag?```", value: `\`${user.user.tag}\``, inline: true }
-        )
+        .setDescription(`❌ <@${message.author.id}>: couldn't find anyone banned with this ID`);
+      return message.reply({ embeds: [embed] });
+    }
 
-      message.reply({ embeds: [embed] });
-    } catch (err) {
-      console.error(err);
-      message.channel.send("*sorry, i couldn't find anyone banned with this ID. check the ID or ban list?*");
+    // Confirmation embed
+    const confirmEmbed = new MessageEmbed()
+      .setDescription(`⚠️ <@${message.author.id}>: are you sure you want to unban **${user.user.tag}**?`);
+
+    const row = new MessageActionRow()
+      .addComponents(
+        new MessageButton()
+          .setCustomId("unban_confirm")
+          .setLabel("Confirm")
+          .setStyle("SUCCESS"),
+        new MessageButton()
+          .setCustomId("unban_cancel")
+          .setLabel("Cancel")
+          .setStyle("SECONDARY")
+      );
+
+    const confirmMsg = await message.reply({ embeds: [confirmEmbed], components: [row] });
+
+    const filter = (i) => i.user.id === message.author.id && ["unban_confirm", "unban_cancel"].includes(i.customId);
+
+    try {
+      const interaction = await confirmMsg.awaitMessageComponent({ filter, time: 30000 });
+
+      if (interaction.customId === "unban_confirm") {
+        await message.guild.members.unban(user.user);
+        await interaction.update({ content: "👍", embeds: [], components: [] });
+      } else {
+        const cancelEmbed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: ${user.user.tag} was not unbanned`);
+        await interaction.update({ embeds: [cancelEmbed], components: [] });
+      }
+    } catch (error) {
+      if (error.code === "INTERACTION_COLLECTOR_ERROR") {
+        const timeoutEmbed = new MessageEmbed()
+          .setDescription(`⏰ <@${message.author.id}>: no response received, unban cancelled`);
+        await confirmMsg.edit({ embeds: [timeoutEmbed], components: [] });
+      } else {
+        console.error(error);
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: couldn't unban them`);
+        message.reply({ embeds: [embed] });
+      }
     }
   },
 };

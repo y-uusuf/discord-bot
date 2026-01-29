@@ -6,27 +6,27 @@ module.exports = {
     description: "Manage flagged words and logging.",
     async execute(client, message, args) {
         if (!message.member.permissions.has("MANAGE_GUILD")) {
-            return message.reply("*sorry, you need 'Manage Server' permission to manage flagged words.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: you are missing **Manage Server** permission(s) to run this command`);
+            return message.reply({ embeds: [embed] });
         }
 
         const sub = args[0]?.toLowerCase();
 
         if (!sub) {
             const embed = new MessageEmbed()
-                .setTitle("flag command")
-                .setDescription("*monitor messages for specific words.*")
-                .addFields(
-                    { name: "```usage```", value: "`,flag <subcommand> <args>`", inline: false },
-                    { name: "```subcommands```", value: "`add <word>` - add a flagged word\n`remove <word>` - remove a flagged word\n`list` - list all flagged words\n`ping <@role>` - set role to ping on flag detection\n`ping remove` - disable ping", inline: false },
-                    { name: "```examples```", value: "`,flag add scam`\n`,flag list`\n`,flag ping @Mods`", inline: false }
-                );
+                .setDescription(`🚩 <@${message.author.id}>: monitor messages for specific words.\n\n**subcommands:**\n\`add <word>\` - add a flagged word\n\`remove <word>\` - remove a flagged word\n\`list\` - list all flagged words\n\`ping <@role>\` - set role to ping\n\`ping remove\` - disable ping`);
             return message.reply({ embeds: [embed] });
         }
 
         // --- ADD WORD ---
         if (sub === "add") {
             const word = args.slice(1).join(" ");
-            if (!word) return message.reply("*please provide a word to flag.*");
+            if (!word) {
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: please provide a word to flag`);
+                return message.reply({ embeds: [embed] });
+            }
 
             await Settings.findOneAndUpdate(
                 { guildId: message.guild.id },
@@ -34,13 +34,19 @@ module.exports = {
                 { upsert: true }
             );
 
-            return message.reply(`*successfully added **${word}** to flagged words.*`);
+            const embed = new MessageEmbed()
+                .setDescription(`🚩 <@${message.author.id}>: added **${word}** to flagged words`);
+            return message.reply({ embeds: [embed] });
         }
 
         // --- REMOVE WORD ---
         if (sub === "remove") {
             const word = args.slice(1).join(" ");
-            if (!word) return message.reply("*please provide a word to remove.*");
+            if (!word) {
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: please provide a word to remove`);
+                return message.reply({ embeds: [embed] });
+            }
 
             await Settings.findOneAndUpdate(
                 { guildId: message.guild.id },
@@ -48,20 +54,22 @@ module.exports = {
                 { upsert: true }
             );
 
-            return message.reply(`*successfully removed **${word}** from flagged words.*`);
+            const embed = new MessageEmbed()
+                .setDescription(`🚩 <@${message.author.id}>: removed **${word}** from flagged words`);
+            return message.reply({ embeds: [embed] });
         }
 
         // --- LIST WORDS ---
         if (sub === "list") {
             const settings = await Settings.findOne({ guildId: message.guild.id });
             if (!settings || !settings.flaggedWords || settings.flaggedWords.length === 0) {
-                return message.reply("*no flagged words set.*");
+                const embed = new MessageEmbed()
+                    .setDescription(`📋 <@${message.author.id}>: no flagged words set`);
+                return message.reply({ embeds: [embed] });
             }
 
             const embed = new MessageEmbed()
-                .setTitle("flagged words")
-                .setDescription(settings.flaggedWords.map((w, i) => `\`${i + 1}.\` ${w}`).join("\n"))
-                .setColor("RED");
+                .setDescription(`📋 <@${message.author.id}>: flagged words\n\n${settings.flaggedWords.map((w, i) => `**${i + 1}.** ${w}`).join("\n")}`);
 
             return message.reply({ embeds: [embed] });
         }
@@ -76,15 +84,19 @@ module.exports = {
                     { flagLogPing: null },
                     { upsert: true }
                 );
-                return message.reply("*flag ping removed.*");
+                const embed = new MessageEmbed()
+                    .setDescription(`🚩 <@${message.author.id}>: flag ping removed`);
+                return message.reply({ embeds: [embed] });
             }
 
             const role = message.mentions.roles.first() || message.guild.roles.cache.get(roleArg?.replace(/[<@&>]/g, ""));
 
             if (!role) {
                 const settings = await Settings.findOne({ guildId: message.guild.id });
-                const currentObj = settings?.flagLogPing ? `<@&${settings.flagLogPing}>` : "`none`";
-                return message.reply(`*current flag ping: ${currentObj}. provide a role to set, or use \`remove\`.*`);
+                const currentObj = settings?.flagLogPing ? `<@&${settings.flagLogPing}>` : "none";
+                const embed = new MessageEmbed()
+                    .setDescription(`🚩 <@${message.author.id}>: current flag ping: ${currentObj}. provide a role to set, or use \`remove\``);
+                return message.reply({ embeds: [embed] });
             }
 
             await Settings.findOneAndUpdate(
@@ -93,7 +105,9 @@ module.exports = {
                 { upsert: true }
             );
 
-            return message.reply(`*flag ping set to **${role.name}**.*`);
+            const embed = new MessageEmbed()
+                .setDescription(`🚩 <@${message.author.id}>: flag ping set to **${role.name}**`);
+            return message.reply({ embeds: [embed] });
         }
     }
 };

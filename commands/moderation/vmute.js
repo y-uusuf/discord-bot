@@ -4,17 +4,14 @@ module.exports = {
   name: "vmute",
   async execute(client, message, args) {
     if (!message.member.permissions.has("MUTE_MEMBERS")) {
-      return message.reply("*you don't have permission to mute members.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: you are missing **Mute Members** permission(s) to run this command`);
+      return message.reply({ embeds: [embed] });
     }
 
     if (!args[0]) {
       const embed = new MessageEmbed()
-        .setTitle("vmute command")
-        .setDescription("*server mutes a member in voice channels.*")
-        .addFields(
-          { name: "```usage```", value: "`,vmute @user`\n`,vmute all`\n`,vmute <channel>`", inline: false },
-          { name: "```examples```", value: "`,vmute @yusuf`\n`,vmute all`", inline: false }
-        );
+        .setDescription(`🔇 <@${message.author.id}>: server mutes a member in voice channels.\n\n**usage:** \`,vmute @user\` or \`,vmute all\``);
       return message.reply({ embeds: [embed] });
     }
 
@@ -25,19 +22,18 @@ module.exports = {
       message.guild.members.cache.forEach(member => {
         if (member.voice.channel && !member.voice.serverMute) {
           member.voice.setMute(true).catch(() => null);
-          muted.push(`\`${member.user.tag}\``);
+          muted.push(member.user.username);
         }
       });
 
       if (muted.length === 0) {
-        return message.reply("*no one is in a voice channel, or everyone is already muted.*");
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: no one is in a voice channel, or everyone is already muted`);
+        return message.reply({ embeds: [embed] });
       }
 
       const embed = new MessageEmbed()
-        .setTitle("muted everyone in voice channels")
-        .setDescription(muted.join("\n"))
-        .setFooter({ text: `total muted: ${muted.length} | by ${message.author.tag}` })
-        .setTimestamp();
+        .setDescription(`🔇 <@${message.author.id}>: voice muted **${muted.length}** member(s)`);
 
       return message.channel.send({ embeds: [embed] });
     }
@@ -50,19 +46,18 @@ module.exports = {
       channel.members.forEach(member => {
         if (!member.voice.serverMute) {
           member.voice.setMute(true).catch(() => null);
-          muted.push(`\`${member.user.tag}\``);
+          muted.push(member.user.username);
         }
       });
 
       if (muted.length === 0) {
-        return message.reply("*no one is in that channel, or they're already muted.*");
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: no one is in that channel, or they're already muted`);
+        return message.reply({ embeds: [embed] });
       }
 
       const embed = new MessageEmbed()
-        .setTitle(`muted everyone in ${channel.name}`)
-        .setDescription(muted.join("\n"))
-        .setFooter({ text: `total muted: ${muted.length} | by ${message.author.tag}` })
-        .setTimestamp();
+        .setDescription(`🔇 <@${message.author.id}>: voice muted **${muted.length}** member(s) in <#${channel.id}>`);
 
       return message.channel.send({ embeds: [embed] });
     }
@@ -71,33 +66,34 @@ module.exports = {
     const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
 
     if (!target) {
-      return message.reply("*please mention a valid user, or provide their ID.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: please mention a valid user, or provide their ID`);
+      return message.reply({ embeds: [embed] });
     }
 
     if (!target.voice.channel) {
-      return message.reply("*that user is not in a voice channel.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: that user is not in a voice channel`);
+      return message.reply({ embeds: [embed] });
     }
 
     if (target.voice.serverMute) {
-      return message.reply("*that user is already server muted.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: that user is already server muted`);
+      return message.reply({ embeds: [embed] });
     }
 
     try {
-      await target.voice.setMute(true, `Successfully muted.`);
-
+      await target.voice.setMute(true);
       const embed = new MessageEmbed()
-        .setTitle("user server muted.")
-        .addFields(
-          { name: "```user```", value: `\`${target.user.tag}\``, inline: true },
-          { name: "```by```", value: `\`${message.author.tag}\``, inline: true }
-        )
-        .setFooter("user has been server muted.")
-        .setTimestamp();
+        .setDescription(`🔇 <@${message.author.id}>: voice muted **${target.user.username}**`);
 
       return message.channel.send({ embeds: [embed] });
     } catch (error) {
       console.error(error);
-      return message.reply("*i couldn't server mute that user.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: couldn't server mute that user`);
+      return message.reply({ embeds: [embed] });
     }
   },
 };

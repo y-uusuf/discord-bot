@@ -5,19 +5,16 @@ module.exports = {
     name: "mute",
     async execute(client, message, args) {
         if (!message.member.permissions.has("MANAGE_ROLES")) {
-            return message.reply("*you don't have permission to mute members.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: you are missing **Manage Roles** permission(s) to run this command`);
+            return message.reply({ embeds: [embed] });
         }
 
         const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
 
         if (!target) {
             const embed = new MessageEmbed()
-                .setTitle("mute command")
-                .setDescription("*mutes a member so they cannot chat.*")
-                .addFields(
-                    { name: "```usage```", value: "`,mute @user`", inline: false },
-                    { name: "```examples```", value: "`,mute @yusuf`", inline: false }
-                );
+                .setDescription(`🔇 <@${message.author.id}>: mutes a member so they cannot chat.\n\n**usage:** \`,mute @user\`\n**example:** \`,mute @yusuf\``);
             return message.reply({ embeds: [embed] });
         }
 
@@ -26,31 +23,35 @@ module.exports = {
         const roleId = settings?.muteRole;
 
         if (!roleId) {
-            return message.reply("*mute role not set. use `,set mute @role` to configure.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: mute role not set. use \`,set mute @role\` to configure`);
+            return message.reply({ embeds: [embed] });
         }
 
         const muteRole = message.guild.roles.cache.get(roleId);
         if (!muteRole) {
-            return message.reply("*mute role not found on this server.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: mute role not found on this server`);
+            return message.reply({ embeds: [embed] });
         }
 
         if (target.roles.cache.has(roleId)) {
-            return message.reply("*this user is already muted.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: this user is already muted`);
+            return message.reply({ embeds: [embed] });
         }
 
         try {
             await target.roles.add(muteRole);
-
             const embed = new MessageEmbed()
-                .setDescription(`\`successfully muted ${target.user.username}.\``)
-                .setFooter({ text: "muted by " + message.author.username + "." })
-                .setTimestamp();
-
+                .setDescription(`🔇 <@${message.author.id}>: muted **${target.user.username}**`);
             message.channel.send({ embeds: [embed] });
 
         } catch (err) {
             console.error(err);
-            message.reply("*could not mute this user.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: could not mute this user`);
+            message.reply({ embeds: [embed] });
         }
     },
 };

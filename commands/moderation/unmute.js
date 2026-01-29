@@ -5,19 +5,16 @@ module.exports = {
     name: "unmute",
     async execute(client, message, args) {
         if (!message.member.permissions.has("MANAGE_ROLES")) {
-            return message.reply("*you don't have permission to unmute members.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: you are missing **Manage Roles** permission(s) to run this command`);
+            return message.reply({ embeds: [embed] });
         }
 
         const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
 
         if (!target) {
             const embed = new MessageEmbed()
-                .setTitle("unmute command")
-                .setDescription("*unmutes a member.*")
-                .addFields(
-                    { name: "```usage```", value: "`,unmute @user`", inline: false },
-                    { name: "```examples```", value: "`,unmute @yusuf`", inline: false }
-                );
+                .setDescription(`🔊 <@${message.author.id}>: unmutes a member.\n\n**usage:** \`,unmute @user\`\n**example:** \`,unmute @yusuf\``);
             return message.reply({ embeds: [embed] });
         }
 
@@ -26,31 +23,35 @@ module.exports = {
         const roleId = settings?.muteRole;
 
         if (!roleId) {
-            return message.reply("*mute role not set. use `,set mute @role` to configure.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: mute role not set. use \`,set mute @role\` to configure`);
+            return message.reply({ embeds: [embed] });
         }
 
         const muteRole = message.guild.roles.cache.get(roleId);
         if (!muteRole) {
-            return message.reply("*mute role not found on this server.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: mute role not found on this server`);
+            return message.reply({ embeds: [embed] });
         }
 
         if (!target.roles.cache.has(roleId)) {
-            return message.reply("*this user is not muted.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: this user is not muted`);
+            return message.reply({ embeds: [embed] });
         }
 
         try {
             await target.roles.remove(muteRole);
-
             const embed = new MessageEmbed()
-                .setDescription(`\`successfully unmuted ${target.user.username}.\``)
-                .setFooter({ text: "unmuted by " + message.author.username + "." })
-                .setTimestamp();
-
+                .setDescription(`🔊 <@${message.author.id}>: unmuted **${target.user.username}**`);
             message.channel.send({ embeds: [embed] });
 
         } catch (err) {
             console.error(err);
-            message.reply("*could not unmute this user.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: could not unmute this user`);
+            message.reply({ embeds: [embed] });
         }
     },
 };

@@ -2,6 +2,7 @@ const { MessageEmbed } = require("discord.js");
 
 module.exports = {
   name: "info",
+  aliases: ["whois", "userinfo"],
   async execute(client, message, args) {
     let input = args[0];
     let user;
@@ -16,52 +17,42 @@ module.exports = {
         try {
           user = await client.users.fetch(input);
         } catch {
-          return message.reply("*sorry, couldn't find a user with that ID.*");
+          const embed = new MessageEmbed()
+            .setDescription(`❌ <@${message.author.id}>: couldn't find a user with that ID`);
+          return message.reply({ embeds: [embed] });
         }
       } else {
-        return message.reply("*please, mention a valid user/ID.*");
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: please mention a valid user or ID`);
+        return message.reply({ embeds: [embed] });
       }
     }
 
     const member = await message.guild.members.fetch(user.id).catch(() => null);
 
-    const embed = new MessageEmbed()
-      .setAuthor({ name: user.username, iconURL: user.displayAvatarURL({ dynamic: true }) })
-      .addFields(
-        { name: "```username?```", value: `\`${user.username}\``, inline: true },
-        { name: "```display name?```", value: `\`${user.displayName}\``, inline: true },
-        { name: "```id?```", value: `\`${user.id}\``, inline: true },
-        { name: "```is bot?```", value: `\`${user.bot ? "yes." : "no."}\``, inline: true },
-        {
-          name: "```account creation date?```",
-          value: `*<t:${Math.floor(user.createdTimestamp / 1000)}:F>*`,
-          inline: true,
-        }
-      );
+    let info = "";
+    info += `**id:** ${user.id}\n`;
+    info += `**bot:** ${user.bot ? "yes" : "no"}\n`;
+    info += `**created:** <t:${Math.floor(user.createdTimestamp / 1000)}:R>\n`;
 
     if (member) {
-      embed.addFields(
-        { name: "```nickname?```", value: `\`${member.nickname}\`` || "```none.```", inline: true },
-        { name: "```joined?```", value: `*<t:${Math.floor(member.joinedTimestamp / 1000)}:F>*`, inline: true },
-        { name: "```roles?```", value: `\`${member.roles.cache.map((r) => r.name).join(", ")}\`` || "```none.```", inline: true }
-      );
+      info += `**nickname:** ${member.nickname || "none"}\n`;
+      info += `**joined:** <t:${Math.floor(member.joinedTimestamp / 1000)}:R>\n`;
+      info += `**roles:** ${member.roles.cache.size - 1}`;
     } else {
-      embed.setFooter("user is not in this server.");
+      info += `\n*user is not in this server*`;
     }
+
+    const embed = new MessageEmbed()
+      .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL({ dynamic: true }) })
+      .setDescription(info)
+      .setThumbnail(user.displayAvatarURL({ dynamic: true }));
 
     try {
       const banInfo = await message.guild.bans.fetch(user.id);
-      embed.setDescription("```WARNING!``` This user has been banned from this server.");
-      embed.addFields({
-        name: "```reason for ban?```",
-        value: banInfo.reason,
-        inline: true,
-      });
-    } catch (error) {
-      // User is not banned, continue
-    }
+      embed.setFooter({ text: `Banned: ${banInfo.reason || "no reason"}` });
+    } catch { }
 
-    embed.setTimestamp();
     message.reply({ embeds: [embed] });
   },
 };

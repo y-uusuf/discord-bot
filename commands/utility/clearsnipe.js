@@ -5,7 +5,9 @@ module.exports = {
     aliases: ["cs"],
     async execute(client, message, args) {
         if (!client.snipes) {
-            return message.react("✅");
+            const embed = new MessageEmbed()
+                .setDescription(`🗑️ <@${message.author.id}>: snipes cleared`);
+            return message.reply({ embeds: [embed] });
         }
 
         // Clear all snipes for this guild
@@ -16,7 +18,8 @@ module.exports = {
             }
         }
 
-        return message.react("✅");
+        const embed = new MessageEmbed()
+            .setDescription(`🗑️ <@${message.author.id}>: snipes cleared`);
+        return message.reply({ embeds: [embed] });
     },
 };
-

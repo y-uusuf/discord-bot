@@ -18,13 +18,13 @@ module.exports = {
     if (!userData) {
       return message.reply(
         target.id === message.author.id
-          ? "*you don't have any aura yet. start chatting to get it.*"
-          : `*${target.username} doesn't have any aura yet.*`
+          ? "you don't have any aura yet. start chatting to get it."
+          : `${target.username} doesn't have any aura yet.`
       );
     }
 
     const embed = new MessageEmbed()
-      .setTitle("your aura;")
+      .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
       .setThumbnail(target.displayAvatarURL({ dynamic: true }))
       .addFields(
         { name: "```level```", value: `\`${userData.level}.\``, inline: true },

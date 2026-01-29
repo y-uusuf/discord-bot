@@ -7,30 +7,37 @@ module.exports = {
   name: 'warn',
   async execute(client, message, args) {
     try {
-      if (!message.guild || !message.member)
-        return message.reply("*this command can only be used in a server.*");
+      if (!message.guild || !message.member) {
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: this command can only be used in a server`);
+        return message.reply({ embeds: [embed] });
+      }
 
-      if (!message.member.permissions.has('MODERATE_MEMBERS'))
-        return message.reply("*sorry, you can't warn anyone.*");
+      if (!message.member.permissions.has('MODERATE_MEMBERS')) {
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: you are missing **Moderate Members** permission(s) to run this command`);
+        return message.reply({ embeds: [embed] });
+      }
 
       const target = message.mentions.users.first();
       if (!target) {
         const embed = new MessageEmbed()
-          .setTitle("warn command")
-          .setDescription("*warnings a member breaking the rules.*")
-          .addFields(
-            { name: "```usage```", value: "`,warn @user <reason>`", inline: false },
-            { name: "```examples```", value: "`,warn @yusuf usage of slurs`", inline: false }
-          );
+          .setDescription(`⚠️ <@${message.author.id}>: warns a member breaking the rules.\n\n**usage:** \`,warn @user <reason>\`\n**example:** \`,warn @yusuf usage of slurs\``);
         return message.reply({ embeds: [embed] });
       }
 
-      if (target.bot)
-        return message.reply("*you can't warn bots.*");
+      if (target.bot) {
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: you can't warn bots`);
+        return message.reply({ embeds: [embed] });
+      }
 
       const reason = args.slice(1).join(' ');
-      if (!reason)
-        return message.reply('*please, provide a reason as to why you are warning them.*');
+      if (!reason) {
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: please provide a reason for the warning`);
+        return message.reply({ embeds: [embed] });
+      }
 
       const userId = target.id;
       const guildId = message.guild.id;
@@ -59,26 +66,14 @@ module.exports = {
 
       const totalWarns = warnDoc.warnings.length;
 
-      let footerText = `this user was warned by ${message.author.username}.`;
-      if (totalWarns < 2) footerText += " next sanction at 2 warns: 24h jail.";
-      else if (totalWarns < 5) footerText += " next sanction at 5 warns: 7d jail.";
-      else if (totalWarns < 6) footerText += " next sanction at 6 warns: permanent ban.";
-
       const warnEmbed = new MessageEmbed()
-        .setAuthor({ name: "user warned successfully.", iconURL: target.displayAvatarURL() })
-        .addFields(
-          { name: '```Who?```', value: `\`${target.username}\``, inline: true },
-          { name: '```Why?```', value: `\`${reason}\``, inline: true },
-          { name: '```Total Warnings?```', value: `\`${totalWarns}\``, inline: true }
-        )
-        .setFooter({ text: footerText })
-        .setTimestamp();
+        .setDescription(`⚠️ <@${message.author.id}>: warned **${target.username}** for \`${reason}\` (total: ${totalWarns})`);
 
       await message.channel.send({ embeds: [warnEmbed] });
 
       try {
         await target.send(
-          `Hello ${target.username},\n> You've been warned in **${message.guild.name}** for '*${reason}*'.\n> You now have **${totalWarns}** total warning(s).`
+          `You've been warned in **${message.guild.name}** for '${reason}'. You now have **${totalWarns}** warning(s).`
         );
       } catch { }
 
@@ -99,14 +94,7 @@ module.exports = {
         await guildMember.roles.add(JAIL_ROLE_ID).catch(() => { });
 
         const jailEmbed = new MessageEmbed()
-          .setTitle(`user auto-jailed.`)
-          .addFields(
-            { name: '```who?```', value: `\`${target.username}\``, inline: true },
-            { name: '```why?```', value: `\`reached ${totalWarns} warnings.\``, inline: true },
-            { name: '```until?```', value: `<t:${Math.floor(expirationDate.getTime() / 1000)}:F>`, inline: true }
-          )
-          .setFooter({ text: `${target.username} was automatically jailed.` })
-          .setTimestamp();
+          .setDescription(`🔒 <@${message.author.id}>: jailed **${target.username}** for ${durationStr} (reached ${totalWarns} warnings)`);
 
         await message.channel.send({ embeds: [jailEmbed] });
 
@@ -120,28 +108,20 @@ module.exports = {
             await guildMember.ban({ reason: `Reached 6 warnings.` });
 
             const banEmbed = new MessageEmbed()
-              .setTitle(`user auto-banned.`)
-              .addFields(
-                { name: '```Who?```', value: `\`${target.tag}\``, inline: true },
-                { name: '```Reason?```', value: `\`Reached 6 warnings\``, inline: true }
-              )
-              .setFooter({ text: `user banned automatically.` })
-              .setTimestamp();
+              .setDescription(`🔨 <@${message.author.id}>: banned **${target.tag}** (reached 6 warnings)`);
 
             await message.channel.send({ embeds: [banEmbed] });
           } catch (err) {
             console.warn(`Failed to ban ${target.tag}: ${err.message}`);
-            // Silently fail
           }
-        } else {
-          console.warn(`Cannot ban ${target.tag} due to role hierarchy.`);
         }
-
       }
 
     } catch (err) {
       console.error(err);
-      message.reply("*sorry, I couldn't help with this.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: something went wrong`);
+      message.reply({ embeds: [embed] });
     }
   },
 };

@@ -1,10 +1,12 @@
-const { MessageEmbed } = require("discord.js");
+const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
 
 module.exports = {
     name: "kick",
     async execute(client, message, args) {
         if (!message.member.permissions.has("KICK_MEMBERS")) {
-            return message.reply("*sorry, you can't kick anyone.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: you are missing **Kick Members** permission(s) to run this command`);
+            return message.reply({ embeds: [embed] });
         }
 
         const targetIdOrMention = args[0];
@@ -12,12 +14,7 @@ module.exports = {
 
         if (!targetIdOrMention) {
             const embed = new MessageEmbed()
-                .setTitle("kick command")
-                .setDescription("*kicks a member from the server.*")
-                .addFields(
-                    { name: "```usage```", value: "`,kick @user [reason]`", inline: false },
-                    { name: "```examples```", value: "`,kick @yusuf spamming`", inline: false }
-                );
+                .setDescription(`👢 <@${message.author.id}>: kicks a member from the server.\n\n**usage:** \`,kick @user [reason]\`\n**example:** \`,kick @yusuf spamming\``);
             return message.reply({ embeds: [embed] });
         }
 
@@ -30,27 +27,60 @@ module.exports = {
             try {
                 userToKick = await message.guild.members.fetch(targetIdOrMention);
             } catch {
-                return message.reply(`*sorry, couldn't find a member with the id '**${targetIdOrMention}**'.*`);
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: couldn't find a member with the id **${targetIdOrMention}**`);
+                return message.reply({ embeds: [embed] });
             }
         }
 
         if (!userToKick.kickable) {
-            return message.reply("*sorry, i can't kick them, maybe make my role higher?*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: i can't kick them, maybe make my role higher?`);
+            return message.reply({ embeds: [embed] });
         }
 
+        // Confirmation embed
+        const confirmEmbed = new MessageEmbed()
+            .setDescription(`⚠️ <@${message.author.id}>: are you sure you want to kick **${userToKick.user.tag}**? (reason: ${reason})`);
+
+        const row = new MessageActionRow()
+            .addComponents(
+                new MessageButton()
+                    .setCustomId("kick_confirm")
+                    .setLabel("Confirm")
+                    .setStyle("DANGER"),
+                new MessageButton()
+                    .setCustomId("kick_cancel")
+                    .setLabel("Cancel")
+                    .setStyle("SECONDARY")
+            );
+
+        const confirmMsg = await message.reply({ embeds: [confirmEmbed], components: [row] });
+
+        const filter = (i) => i.user.id === message.author.id && ["kick_confirm", "kick_cancel"].includes(i.customId);
+
         try {
-            await userToKick.kick(reason);
-            const embed = new MessageEmbed()
-                .setTitle("kicked successfully.")
-                .addFields(
-                    { name: "```id:```", value: `\`${userToKick.id}\``, inline: true },
-                    { name: "```tag?```", value: `\`${userToKick.user.tag}\``, inline: true },
-                    { name: "```why?```", value: `*${reason}*`, inline: true }
-                );
-            message.reply({ embeds: [embed] });
+            const interaction = await confirmMsg.awaitMessageComponent({ filter, time: 30000 });
+
+            if (interaction.customId === "kick_confirm") {
+                await userToKick.kick(reason);
+                await interaction.update({ content: "👍", embeds: [], components: [] });
+            } else {
+                const cancelEmbed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: ${userToKick.user.tag} was not kicked`);
+                await interaction.update({ embeds: [cancelEmbed], components: [] });
+            }
         } catch (error) {
-            console.error(error);
-            message.reply("*sorry, i couldn't kick them.*");
+            if (error.code === "INTERACTION_COLLECTOR_ERROR") {
+                const timeoutEmbed = new MessageEmbed()
+                    .setDescription(`⏰ <@${message.author.id}>: no response received, kick cancelled`);
+                await confirmMsg.edit({ embeds: [timeoutEmbed], components: [] });
+            } else {
+                console.error(error);
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: couldn't kick them`);
+                message.reply({ embeds: [embed] });
+            }
         }
     },
 };

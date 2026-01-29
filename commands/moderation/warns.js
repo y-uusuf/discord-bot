@@ -5,11 +5,17 @@ module.exports = {
   name: 'warns',
   async execute(client, message, args) {
     try {
-      if (!message.guild || !message.member)
-        return message.reply("*this command can only be used in a server.*");
+      if (!message.guild || !message.member) {
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: this command can only be used in a server`);
+        return message.reply({ embeds: [embed] });
+      }
 
-      if (!message.member.permissions.has('MODERATE_MEMBERS'))
-        return message.reply("*sorry, you don't have permission to view warnings.*");
+      if (!message.member.permissions.has('MODERATE_MEMBERS')) {
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: you are missing **Moderate Members** permission(s) to run this command`);
+        return message.reply({ embeds: [embed] });
+      }
 
       let target;
 
@@ -27,27 +33,25 @@ module.exports = {
       const warnDoc = await Warn.findOne({ userId: target.id, guildId: message.guild.id });
 
       if (!warnDoc || !warnDoc.warnings.length) {
-        return message.reply(`*${target.username} has no warnings.*`);
+        const embed = new MessageEmbed()
+          .setDescription(`📋 <@${message.author.id}>: **${target.username}** has no warnings`);
+        return message.reply({ embeds: [embed] });
       }
 
-      const embed = new MessageEmbed()
-        .setDescription(`\`showing all warnings for ${target.username};\``)
-        .setThumbnail(target.displayAvatarURL({ dynamic: true }))
-        .setFooter({ text: `requested by ${message.author.tag}, the user '${target.username}' has a total of ${warnDoc.warnings.length} warning(s).`, iconURL: message.author.displayAvatarURL() })
-        .setTimestamp();
+      const warningsList = warnDoc.warnings.map((warn, i) =>
+        `**#${i + 1}** - \`${warn.reason}\` by <@${warn.moderatorId}>`
+      ).join('\n');
 
-      warnDoc.warnings.forEach((warn, i) => {
-        embed.addFields(
-          `\`warn; #${i + 1}\``,
-          `**why?** \`${warn.reason}\`\n**mod?** <@${warn.moderatorId}>\n**when?** *<t:${Math.floor(new Date(warn.timestamp).getTime() / 1000)}:F>*`
-        );
-      });
+      const embed = new MessageEmbed()
+        .setDescription(`📋 <@${message.author.id}>: warnings for **${target.username}** (${warnDoc.warnings.length} total)\n\n${warningsList}`);
 
       message.channel.send({ embeds: [embed] });
 
     } catch (err) {
       console.error(err);
-      message.reply("*sorry, I couldn't fetch the warnings.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: couldn't fetch the warnings`);
+      message.reply({ embeds: [embed] });
     }
   },
 };

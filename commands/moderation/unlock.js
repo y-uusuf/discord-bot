@@ -4,7 +4,9 @@ module.exports = {
   name: 'unlock',
   async execute(client, message, args) {
     if (!message.member.permissions.has('MANAGE_CHANNELS')) {
-      return message.reply("*sorry, you can't unlock any channels.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: you are missing **Manage Channels** permission(s) to run this command`);
+      return message.reply({ embeds: [embed] });
     }
 
     const target =
@@ -13,7 +15,9 @@ module.exports = {
       message.channel;
 
     if (!target) {
-      return message.reply("*please, provide a valid channel to unlock.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: please provide a valid channel to unlock`);
+      return message.reply({ embeds: [embed] });
     }
 
     try {
@@ -21,23 +25,24 @@ module.exports = {
       const isText = target.type === "GUILD_TEXT" || target.type === "GUILD_NEWS";
 
       if (!isVoice && !isText) {
-        return message.reply("*this channel type is not supported.*");
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: this channel type is not supported`);
+        return message.reply({ embeds: [embed] });
       }
 
       await target.permissionOverwrites.edit(message.guild.roles.everyone, {
-        [isText ? 'SEND_MESSAGES' : 'CONNECT']: null, // reset to default
+        [isText ? 'SEND_MESSAGES' : 'CONNECT']: null,
       });
 
       const embed = new MessageEmbed()
-        .setTitle(`${target} channel unlocked.`)
-        .addFields({ name: "```by who?```", value: `\`${message.author.username}\``, inline: true })
-        .setFooter(isText ? "users can now send messages here." : "users can now join this voice channel.")
-        .setTimestamp();
+        .setDescription(`🔓 <@${message.author.id}>: unlocked <#${target.id}>`);
 
       message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error(err);
-      message.reply("*sorry, i couldn't unlock the channel.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: couldn't unlock the channel`);
+      message.reply({ embeds: [embed] });
     }
   },
 };

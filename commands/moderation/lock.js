@@ -4,7 +4,9 @@ module.exports = {
   name: 'lock',
   async execute(client, message, args) {
     if (!message.member.permissions.has('MANAGE_CHANNELS')) {
-      return message.reply("*sorry, you can't lock any channels.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: you are missing **Manage Channels** permission(s) to run this command`);
+      return message.reply({ embeds: [embed] });
     }
 
     const target =
@@ -13,7 +15,9 @@ module.exports = {
       message.channel;
 
     if (!target) {
-      return message.reply("*please, provide a valid channel to lock.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: please provide a valid channel to lock`);
+      return message.reply({ embeds: [embed] });
     }
 
     try {
@@ -21,7 +25,9 @@ module.exports = {
       const isText = target.type === "GUILD_TEXT" || target.type === "GUILD_NEWS";
 
       if (!isVoice && !isText) {
-        return message.reply("*this channel type is not supported.*");
+        const embed = new MessageEmbed()
+          .setDescription(`❌ <@${message.author.id}>: this channel type is not supported`);
+        return message.reply({ embeds: [embed] });
       }
 
       await target.permissionOverwrites.edit(message.guild.roles.everyone, {
@@ -29,15 +35,14 @@ module.exports = {
       });
 
       const embed = new MessageEmbed()
-        .setTitle(`${target} channel locked.`)
-        .addFields({ name: "```by who?```", value: `\`${message.author.username}\``, inline: true })
-        .setFooter(isText ? "users can't send messages here." : "users can't join this voice channel.")
-        .setTimestamp();
+        .setDescription(`🔒 <@${message.author.id}>: locked <#${target.id}>`);
 
       message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error(err);
-      message.reply("*sorry, i couldn't lock the channel.*");
+      const embed = new MessageEmbed()
+        .setDescription(`❌ <@${message.author.id}>: couldn't lock the channel`);
+      message.reply({ embeds: [embed] });
     }
   },
 };

@@ -5,19 +5,16 @@ module.exports = {
     name: "react",
     async execute(client, message, args) {
         if (!message.member.permissions.has("ADMINISTRATOR")) {
-            return message.reply("*sorry, you need administrator permission to use this command.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: you are missing **Administrator** permission(s) to run this command`);
+            return message.reply({ embeds: [embed] });
         }
 
         const action = args[0]?.toLowerCase();
 
         if (!action || !["add", "remove", "list"].includes(action)) {
             const embed = new MessageEmbed()
-                .setTitle("react command")
-                .setDescription("*manage auto-reactions for specific words.*")
-                .addFields(
-                    { name: "```usage```", value: "`,react add <trigger> <emoji>`\n`,react remove <trigger>`\n`,react list`", inline: false },
-                    { name: "```examples```", value: "`,react add sob 😭`\n`,react remove sob`", inline: false }
-                );
+                .setDescription(`😀 <@${message.author.id}>: manage auto-reactions (or text responses) for specific words.\n\n**usage:**\n\`,react add <trigger> <emoji/text>\`\n\`,react remove <trigger>\`\n\`,react list\``);
             return message.reply({ embeds: [embed] });
         }
 
@@ -25,7 +22,9 @@ module.exports = {
 
         if (action === "list") {
             if (!settings?.autoReacts || settings.autoReacts.size === 0) {
-                return message.reply("*no auto-reactions configured.*");
+                const embed = new MessageEmbed()
+                    .setDescription(`📋 <@${message.author.id}>: no auto-reactions configured`);
+                return message.reply({ embeds: [embed] });
             }
 
             const list = Array.from(settings.autoReacts.entries())
@@ -33,18 +32,19 @@ module.exports = {
                 .join("\n");
 
             const embed = new MessageEmbed()
-                .setTitle("active auto-reactions")
-                .setDescription(list);
+                .setDescription(`📋 <@${message.author.id}>: auto-reactions\n\n${list}`);
 
             return message.reply({ embeds: [embed] });
         }
 
         if (action === "add") {
             const trigger = args[1]?.toLowerCase();
-            const emoji = args[2];
+            const emoji = args.slice(2).join(" ");
 
             if (!trigger || !emoji) {
-                return message.reply("*please provide a trigger word and emoji. usage: `,react add <trigger> <emoji>`*");
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: please provide a trigger word and emoji`);
+                return message.reply({ embeds: [embed] });
             }
 
             await Settings.findOneAndUpdate(
@@ -53,18 +53,24 @@ module.exports = {
                 { upsert: true }
             );
 
-            return message.reply(`*added auto-reaction: when someone says \`${trigger}\`, i'll react with ${emoji}.*`);
+            const embed = new MessageEmbed()
+                .setDescription(`😀 <@${message.author.id}>: added auto-reaction: \`${trigger}\` → ${emoji}`);
+            return message.reply({ embeds: [embed] });
         }
 
         if (action === "remove") {
             const trigger = args[1]?.toLowerCase();
 
             if (!trigger) {
-                return message.reply("*please provide the trigger word to remove. usage: `,react remove <trigger>`*");
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: please provide the trigger word to remove`);
+                return message.reply({ embeds: [embed] });
             }
 
             if (!settings?.autoReacts?.has(trigger)) {
-                return message.reply(`*no auto-reaction found for \`${trigger}\`.*`);
+                const embed = new MessageEmbed()
+                    .setDescription(`❌ <@${message.author.id}>: no auto-reaction found for \`${trigger}\``);
+                return message.reply({ embeds: [embed] });
             }
 
             await Settings.findOneAndUpdate(
@@ -72,7 +78,9 @@ module.exports = {
                 { $unset: { [`autoReacts.${trigger}`]: "" } }
             );
 
-            return message.reply(`*removed auto-reaction for \`${trigger}\`.*`);
+            const embed = new MessageEmbed()
+                .setDescription(`😀 <@${message.author.id}>: removed auto-reaction for \`${trigger}\``);
+            return message.reply({ embeds: [embed] });
         }
     },
 };

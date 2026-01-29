@@ -8,7 +8,7 @@ module.exports = {
         if (message.guild) {
             await message.delete().catch(() => { });
             try {
-                await message.author.send("*you can't confess here. please DM me your confession to remain anonymous.*");
+                await message.author.send("you can't confess here. please DM me your confession to remain anonymous.");
             } catch (e) {
                 // DMs closed, ignore
             }
@@ -18,8 +18,8 @@ module.exports = {
         // 2. Usage Embed (Standardized)
         if (!args.length) {
             const embed = new MessageEmbed()
-                .setTitle("confess command")
-                .setDescription("*send an anonymous confession to the server.*")
+                .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+                .setDescription("send an anonymous confession to the server.")
                 .addFields(
                     { name: "```usage```", value: "`,confess <message>`", inline: false },
                     { name: "```examples```", value: "`,confess i love pizza`", inline: false }
@@ -44,7 +44,7 @@ module.exports = {
         }
 
         if (availableGuilds.length === 0) {
-            return message.reply("*sorry, i couldn't find any common servers with confession channels configured.*");
+            return message.reply("sorry, i couldn't find any common servers with confession channels configured.");
         }
 
         let guild;
@@ -64,7 +64,7 @@ module.exports = {
                 );
 
             const prompt = await message.reply({
-                content: "*you are in multiple servers with me. please select where to send this confession:*",
+                content: "you are in multiple servers with me. please select where to send this confession:",
                 components: [row]
             });
 
@@ -75,12 +75,12 @@ module.exports = {
 
                 // Update message to remove dropdown and show selection
                 await interaction.update({
-                    content: `*selected **${guild.name}**. sending confession...*`,
+                    content: `selected **${guild.name}**. sending confession...`,
                     components: []
                 });
 
             } catch (err) {
-                return prompt.edit({ content: "*selection timed out. confession cancelled.*", components: [] });
+                return prompt.edit({ content: "selection timed out. confession cancelled.", components: [] });
             }
         } else {
             guild = availableGuilds[0];
@@ -91,12 +91,12 @@ module.exports = {
         // 5. Check Settings Again (Safety)
         const settings = await Settings.findOne({ guildId: guild.id });
         if (!settings || !settings.confessChannel) {
-            return message.reply(`*confessions are not configured for **${guild.name}**. ask an admin to set a confess channel.*`);
+            return message.reply(`confessions are not configured for **${guild.name}**. ask an admin to set a confess channel.`);
         }
 
         const channel = await guild.channels.fetch(settings.confessChannel).catch(() => null);
         if (!channel) {
-            return message.reply("*the configured confession channel no longer exists.*");
+            return message.reply("the configured confession channel no longer exists.");
         }
 
         // 6. Webhook Logic
@@ -112,13 +112,13 @@ module.exports = {
             }
         } catch (err) {
             console.error("Webhook Error:", err);
-            return message.reply("*failed to manage webhooks for confession (missing permissions?).*");
+            return message.reply("failed to manage webhooks for confession (missing permissions?).");
         }
 
         // 7. Build Embed & Send
         const embed = new MessageEmbed()
             .setAuthor({ name: "someone has made a confession." })
-            .setDescription(`*"__${confession}__"*`)
+            .setDescription(`"__${confession}__"`)
             .setFooter({ text: "sent anonymously via DMs // do the same with \",confess\"." })
             .setTimestamp();
 
@@ -130,11 +130,11 @@ module.exports = {
             });
 
             // Final Confirmation
-            await message.reply(`*your confession has been sent anonymously to **${guild.name}**!*`);
+            await message.reply(`your confession has been sent anonymously to **${guild.name}**!`);
 
         } catch (err) {
             console.error("Send Error:", err);
-            message.reply("*failed to send confession.*");
+            message.reply("failed to send confession.");
         }
     }
 };

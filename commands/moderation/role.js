@@ -5,7 +5,9 @@ module.exports = {
     aliases: ["r"],
     async execute(client, message, args) {
         if (!message.member.permissions.has("ADMINISTRATOR") && message.author.id !== message.guild.ownerId) {
-            return message.reply("*sorry, only administrators or the server owner can use this command.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: you are missing **Administrator** permission(s) to run this command`);
+            return message.reply({ embeds: [embed] });
         }
 
         const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
@@ -13,23 +15,22 @@ module.exports = {
 
         if (!target || !role) {
             const embed = new MessageEmbed()
-                .setTitle("role command")
-                .setDescription("*toggle roles on members. adds if they don't have it, removes if they do.*")
-                .addFields(
-                    { name: "```usage```", value: "`,role @user @role`\n`,r @user @role`", inline: false },
-                    { name: "```examples```", value: "`,role @yusuf @Member`\n`,r @yusuf @VIP`", inline: false }
-                );
+                .setDescription(`🏷️ <@${message.author.id}>: toggle roles on members.\n\n**usage:** \`,role @user @role\`\n**example:** \`,role @yusuf @Member\``);
             return message.reply({ embeds: [embed] });
         }
 
         // Check if bot can manage this role
         if (role.position >= message.guild.me.roles.highest.position) {
-            return message.reply("*i can't manage this role, it's higher than or equal to my highest role.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: i can't manage this role, it's higher than my highest role`);
+            return message.reply({ embeds: [embed] });
         }
 
         // Check if user can manage this role
         if (message.author.id !== message.guild.ownerId && role.position >= message.member.roles.highest.position) {
-            return message.reply("*you can't manage this role, it's higher than or equal to your highest role.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: you can't manage this role, it's higher than your highest role`);
+            return message.reply({ embeds: [embed] });
         }
 
         const hasRole = target.roles.cache.has(role.id);
@@ -37,14 +38,20 @@ module.exports = {
         try {
             if (hasRole) {
                 await target.roles.remove(role);
-                return message.reply(`*removed **${role.name}** from **${target.user.username}**.*`);
+                const embed = new MessageEmbed()
+                    .setDescription(`🏷️ <@${message.author.id}>: removed **${role.name}** from **${target.user.username}**`);
+                return message.reply({ embeds: [embed] });
             } else {
                 await target.roles.add(role);
-                return message.reply(`*added **${role.name}** to **${target.user.username}**.*`);
+                const embed = new MessageEmbed()
+                    .setDescription(`🏷️ <@${message.author.id}>: added **${role.name}** to **${target.user.username}**`);
+                return message.reply({ embeds: [embed] });
             }
         } catch (error) {
             console.error(error);
-            return message.reply("*sorry, couldn't modify the role.*");
+            const embed = new MessageEmbed()
+                .setDescription(`❌ <@${message.author.id}>: couldn't modify the role`);
+            return message.reply({ embeds: [embed] });
         }
     },
 };

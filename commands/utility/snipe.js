@@ -7,18 +7,20 @@ module.exports = {
         const snipes = client.snipes?.get(message.channel.id);
 
         if (!snipes || snipes.length === 0) {
-            return message.reply("*there's nothing to snipe.*");
+            const embed = new MessageEmbed()
+                .setDescription("there's nothing to snipe.");
+            return message.reply({ embeds: [embed] });
         }
 
-        const snipe = snipes[snipes.length - 1]; // Get the most recent
+        const snipe = snipes[snipes.length - 1];
 
         const embed = new MessageEmbed()
             .setAuthor({
                 name: snipe.author.tag,
                 iconURL: snipe.author.displayAvatarURL({ dynamic: true })
             })
-            .setDescription(snipe.content || "*no text content*")
-            .setFooter({ text: `Deleted` })
+            .setDescription(snipe.content || "no text content")
+            .setFooter({ text: "Deleted" })
             .setTimestamp(snipe.timestamp);
 
         if (snipe.image) {
