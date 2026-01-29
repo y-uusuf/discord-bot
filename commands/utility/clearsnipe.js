@@ -5,7 +5,7 @@ module.exports = {
     aliases: ["cs"],
     async execute(client, message, args) {
         if (!client.snipes) {
-            return message.reply("*snipe cache is already empty.*");
+            return message.react("✅");
         }
 
         // Clear all snipes for this guild
@@ -16,6 +16,7 @@ module.exports = {
             }
         }
 
-        return message.reply("*cleared the snipe cache for this server.*");
+        return message.react("✅");
     },
 };
+
