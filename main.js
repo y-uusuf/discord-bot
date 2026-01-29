@@ -702,7 +702,17 @@ client.on("guildBanAdd", async (ban) => {
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+console.log("Checking DISCORD_TOKEN...");
+if (!process.env.DISCORD_TOKEN) {
+  console.error("❌ DISCORD_TOKEN is missing from environment variables!");
+} else {
+  console.log("✅ DISCORD_TOKEN is present.");
+}
+
+console.log("Attempting to login...");
+client.login(process.env.DISCORD_TOKEN)
+  .then(() => console.log("✅ client.login() promise resolved."))
+  .catch(err => console.error("❌ client.login() failed:", err));
 
 // === EXPRESS KEEP-ALIVE ===
 const express = require("express");
