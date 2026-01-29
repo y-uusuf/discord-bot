@@ -1,4 +1,4 @@
-require("dotenv").config();
+﻿require("dotenv").config();
 
 const { Client, Intents, MessageEmbed, WebhookClient } = require("discord.js");
 const mongoose = require("mongoose");
@@ -7,13 +7,15 @@ const Warn = require('./models/warn');
 const AFK = require("./models/afk");
 const Level = require("./models/level");
 const Webhook = require("./models/webhook");
+
 const Settings = require("./models/settings");
+
 const fs = require("fs");
 const path = require("path");
 
 mongoose
   .connect(process.env.MONGO_URI, {})
-  .then(() => console.log("✅ Successfully connected to database."));
+  .then(() => console.log("âœ… Successfully connected to database."));
 
 const client = new Client({
   intents: [
@@ -76,7 +78,7 @@ client.once("ready", () => {
 
   // === DATABASE CLEANUP ===
   (async () => {
-    console.log("🔄 Starting database cleanup...");
+    console.log("ðŸ”„ Starting database cleanup...");
     const currentGuildIds = new Set(client.guilds.cache.keys());
 
     // 1. Purge Settings
@@ -120,7 +122,7 @@ client.once("ready", () => {
         // Safe fallback
       }
     }
-    console.log("✅ Database cleanup complete.");
+    console.log("âœ… Database cleanup complete.");
   })();
 
   setInterval(async () => {
@@ -242,12 +244,6 @@ client.on("messageCreate", async (message) => {
     await message.delete().catch(() => { });
     return;
   }
-
-  // Custom dev response
-  if (message.author.id === "509117215954436122" && message.content === "who made this bot") {
-    return message.reply("you did king :face_holding_back_tears:").then(m => m.react("🤍"));
-  }
-
   // === COUNTING CHANNEL HANDLING ===
   if (isCountingChannel) {
     const content = message.content.trim();
@@ -265,7 +261,7 @@ client.on("messageCreate", async (message) => {
 
       // Block all other commands
       await message.delete().catch(() => { });
-      return message.author.send("⚠️ You can't use commands in the counting channel.");
+      return message.author.send("âš ï¸ You can't use commands in the counting channel.");
     }
 
     // Check if message is only a number (int or float)
@@ -273,7 +269,7 @@ client.on("messageCreate", async (message) => {
     const isOnlyNumber = !isNaN(num) && content.match(/^[-+]?\d*\.?\d+$/);
 
     if (!isOnlyNumber) {
-      // Just a message, not a number → ignore for counting
+      // Just a message, not a number â†’ ignore for counting
       return;
     }
 
@@ -291,23 +287,24 @@ client.on("messageCreate", async (message) => {
     }
 
     if (message.author.id === countData.lastUserId) {
-      await message.react("❔");
-      await message.reply("*you can't count twice in a row!*");
+      await message.react("â”");
+      const embed = new MessageEmbed()
+        .setDescription(`> ${message.author}: â” *you can't count twice in a row!*`);
+      await message.reply({ embeds: [embed] });
       return;
     }
 
     if (num !== countData.currentNumber) {
-      await message.react("❌");
-      await resetCount(
-        message,
-        countData,
-        `*unfortunately that is the wrong number, we were looking for* **${countData.currentNumber}**. *restarting from 1.*`
-      );
+      await message.react("âŒ");
+      const embed = new MessageEmbed()
+        .setDescription(`> ${message.author}: âŒ *unfortunately that is the wrong number, we were looking for* **${countData.currentNumber}**. *restarting from 1.*`);
+
+      await resetCount(message, countData, { embeds: [embed] });
       return;
     }
 
-    // ✅ Success
-    await message.react("✅");
+    // âœ… Success
+    await message.react("âœ…");
     countData.currentNumber++;
     countData.lastUserId = message.author.id;
     await countData.save();
@@ -317,7 +314,7 @@ client.on("messageCreate", async (message) => {
 
   // === CDN GIF TRIGGER ===
   if (message.content.includes("https://cdn.discordapp.com/attachments/1198671834871251004/1402793329095086242/issa.gif")) {
-    return message.reply("<@801125402927824918>").then(m => m.react('😭'));
+    return message.reply("<@801125402927824918>").then(m => m.react('ðŸ˜­'));
   }
 
   // === DM CONFESS ONLY ===
@@ -385,7 +382,7 @@ client.on("messageCreate", async (message) => {
       await warnDoc.save();
 
       const warnEmbed = new MessageEmbed()
-        .setDescription(`⚠️ <@${userId}>: you have been warned for **spamming** (${warnDoc.warnings.length} total warnings)`);
+        .setDescription(`âš ï¸ <@${userId}>: you have been warned for **spamming** (${warnDoc.warnings.length} total warnings)`);
       await message.channel.send({ embeds: [warnEmbed] }).catch(() => { });
 
       // Reset after warning
@@ -546,7 +543,7 @@ client.on("messageCreate", async (message) => {
               name: `${message.author.username}`,
               iconURL: message.author.displayAvatarURL({ dynamic: true })
             })
-            .setDescription(isFlagged ? `> 🚩 ||${displayContent}||` : displayContent)
+            .setDescription(isFlagged ? `> ðŸš© ||${displayContent}||` : displayContent)
             .addFields(
               { name: "Channel", value: `<#${message.channel.id}>`, inline: true },
               { name: "User ID", value: `\`${message.author.id}\``, inline: true },
@@ -614,7 +611,7 @@ client.on("channelDelete", async (channel) => {
       if (logChannel) {
         const embed = new MessageEmbed()
           .setColor("RED")
-          .setDescription(`🛡️ **ANTINUKE:** <@${executorId}> was stripped of permissions for mass channel deletion`);
+          .setDescription(`ðŸ›¡ï¸ **ANTINUKE:** <@${executorId}> was stripped of permissions for mass channel deletion`);
         await logChannel.send({ embeds: [embed] }).catch(() => { });
       }
     }
@@ -654,7 +651,7 @@ client.on("roleDelete", async (role) => {
       if (logChannel) {
         const embed = new MessageEmbed()
           .setColor("RED")
-          .setDescription(`🛡️ **ANTINUKE:** <@${executorId}> was stripped of permissions for mass role deletion`);
+          .setDescription(`ðŸ›¡ï¸ **ANTINUKE:** <@${executorId}> was stripped of permissions for mass role deletion`);
         await logChannel.send({ embeds: [embed] }).catch(() => { });
       }
     }
@@ -694,7 +691,7 @@ client.on("guildBanAdd", async (ban) => {
       if (logChannel) {
         const embed = new MessageEmbed()
           .setColor("RED")
-          .setDescription(`🛡️ **ANTINUKE:** <@${executorId}> was stripped of permissions for mass banning`);
+          .setDescription(`ðŸ›¡ï¸ **ANTINUKE:** <@${executorId}> was stripped of permissions for mass banning`);
         await logChannel.send({ embeds: [embed] }).catch(() => { });
       }
     }
@@ -704,15 +701,15 @@ client.on("guildBanAdd", async (ban) => {
 
 console.log("Checking DISCORD_TOKEN...");
 if (!process.env.DISCORD_TOKEN) {
-  console.error("❌ DISCORD_TOKEN is missing from environment variables!");
+  console.error("âŒ DISCORD_TOKEN is missing from environment variables!");
 } else {
-  console.log("✅ DISCORD_TOKEN is present.");
+  console.log("âœ… DISCORD_TOKEN is present.");
 }
 
 console.log("Attempting to login...");
 client.login(process.env.DISCORD_TOKEN)
-  .then(() => console.log("✅ client.login() promise resolved."))
-  .catch(err => console.error("❌ client.login() failed:", err));
+  .then(() => console.log("âœ… client.login() promise resolved."))
+  .catch(err => console.error("âŒ client.login() failed:", err));
 
 // === EXPRESS KEEP-ALIVE ===
 const express = require("express");
@@ -728,3 +725,4 @@ async function resetCount(message, countData, reason) {
   countData.lastUserId = null;
   await countData.save();
 }
+

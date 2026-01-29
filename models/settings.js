@@ -17,6 +17,7 @@ const settingsSchema = new mongoose.Schema({
     trialRole: { type: String, default: null },
     levelChannel: { type: String, default: null },
     autoReacts: { type: Map, of: String, default: {} },
+    joinToCreateChannel: { type: String, default: null },
     prefix: { type: String, default: null }
 });
 
