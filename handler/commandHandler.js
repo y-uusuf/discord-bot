@@ -17,6 +17,13 @@ module.exports = (client) => {
                 if (command.name && typeof command.execute === "function") {
                     client.commands.set(command.name, command);
                     loadedCommands.push(command.name);
+
+                    // Register aliases
+                    if (command.aliases && Array.isArray(command.aliases)) {
+                        for (const alias of command.aliases) {
+                            client.commands.set(alias, command);
+                        }
+                    }
                 } else {
                     console.warn(`[⚠️] Skipped invalid command file: ${file.name}`);
                 }

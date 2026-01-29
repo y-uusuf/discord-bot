@@ -33,6 +33,7 @@ const client = new Client({
 
 client.commands = new Map();
 client.trialActive = new Set();
+client.snipes = new Map();
 const loadedCommands = require("./handler/commandHandler")(client);
 const loadedEvents = require("./handler/eventHandler")(client);
 
@@ -125,6 +126,34 @@ client.once("ready", () => {
   });
 });
 
+// === MESSAGE DELETE HANDLER (for snipe) ===
+client.on("messageDelete", async (message) => {
+  if (!message.author || message.author.bot) return;
+  if (!message.guild) return;
+
+  const snipeData = {
+    content: message.content,
+    author: {
+      tag: message.author.tag,
+      displayAvatarURL: (opts) => message.author.displayAvatarURL(opts)
+    },
+    image: message.attachments.first()?.url || null,
+    timestamp: new Date()
+  };
+
+  if (!client.snipes.has(message.channel.id)) {
+    client.snipes.set(message.channel.id, []);
+  }
+
+  const channelSnipes = client.snipes.get(message.channel.id);
+  channelSnipes.push(snipeData);
+
+  // Keep only last 10 snipes per channel
+  if (channelSnipes.length > 10) {
+    channelSnipes.shift();
+  }
+});
+
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
@@ -155,6 +184,20 @@ client.on("messageCreate", async (message) => {
           }
 
           logChannel.send(payload).catch(() => { });
+        }
+      }
+    }
+  }
+
+  // === AUTO-REACT CHECK ===
+  if (guildSettings?.autoReacts && guildSettings.autoReacts.size > 0) {
+    const content = message.content.toLowerCase();
+    for (const [trigger, emoji] of guildSettings.autoReacts) {
+      if (content.includes(trigger.toLowerCase())) {
+        try {
+          await message.react(emoji);
+        } catch (e) {
+          // Emoji might be invalid or bot can't use it
         }
       }
     }
@@ -223,7 +266,7 @@ client.on("messageCreate", async (message) => {
       await resetCount(
         message,
         countData,
-        `*oooo, unfortunately that is the wrong number, we were looking for* **${countData.currentNumber}**. *restarting from 1.*`
+        `*unfortunately that is the wrong number, we were looking for* **${countData.currentNumber}**. *restarting from 1.*`
       );
       return;
     }
@@ -304,7 +347,12 @@ client.on("messageCreate", async (message) => {
         }
       );
 
-    await message.channel.send({ embeds: [levelEmbed] }).catch(() => { });
+    // Send to level channel if configured, otherwise current channel
+    const targetChannel = guildSettings?.levelChannel
+      ? message.guild.channels.cache.get(guildSettings.levelChannel) || message.channel
+      : message.channel;
+
+    await targetChannel.send({ embeds: [levelEmbed] }).catch(() => { });
   }
 
   await userData.save();
@@ -357,8 +405,24 @@ client.on("messageCreate", async (message) => {
       const webhookConfig = await Webhook.findOne({ guildId: message.guild.id });
       const settingsConfig = await Settings.findOne({ guildId: message.guild.id });
 
+      // Determine content display (sticker vs attachment vs text)
+      let displayContent = message.content;
+      if (!displayContent) {
+        if (message.stickers.size > 0) {
+          displayContent = "*sticker only.*";
+        } else if (message.attachments.size > 0) {
+          displayContent = "*attachment only.*";
+        } else {
+          displayContent = "*no content.*";
+        }
+      }
+
+      // Check if message is flagged
+      const isFlagged = settingsConfig?.flaggedWords?.length > 0 &&
+        settingsConfig.flaggedWords.some(word => message.content.toLowerCase().includes(word.toLowerCase()));
+
       const messageLink = `https://discord.com/channels/${message.guild.id}/${message.channel.id}/${message.id}`;
-      const logContent = `${message.content || "*attachment only.*"}\n-# msg link: ${messageLink} | channel: <#${message.channel.id}> | usr id: ${message.author.id}`;
+      const logContent = `${displayContent}\n-# msg link: ${messageLink} | channel: <#${message.channel.id}> | usr id: ${message.author.id}`;
 
       // Try webhook first
       if (webhookConfig?.msgLog?.id && webhookConfig?.msgLog?.token) {
@@ -391,7 +455,7 @@ client.on("messageCreate", async (message) => {
               name: `${message.author.username}`,
               iconURL: message.author.displayAvatarURL({ dynamic: true })
             })
-            .setDescription(message.content || "*attachment only.*")
+            .setDescription(displayContent)
             .addFields(
               { name: "Channel", value: `<#${message.channel.id}>`, inline: true },
               { name: "User ID", value: `\`${message.author.id}\``, inline: true },
@@ -399,13 +463,24 @@ client.on("messageCreate", async (message) => {
             )
             .setTimestamp();
 
+          // If flagged, make it red
+          if (isFlagged) {
+            logEmbed.setColor("RED");
+          }
+
           if (message.attachments.size > 0) {
             const firstImage = message.attachments.find(att => att.contentType?.startsWith('image/'));
             if (firstImage) logEmbed.setImage(firstImage.url);
             logEmbed.addField("Attachments", message.attachments.map(a => `[${a.name}](${a.url})`).join('\n'));
           }
 
-          await logChannel.send({ embeds: [logEmbed] });
+          // Send with ping if flagged
+          const payload = { embeds: [logEmbed] };
+          if (isFlagged && settingsConfig.flagLogPing) {
+            payload.content = `<@&${settingsConfig.flagLogPing}>`;
+          }
+
+          await logChannel.send(payload);
         }
       }
     }

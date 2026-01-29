@@ -20,6 +20,7 @@ module.exports = {
             confess: { field: "confessChannel", name: "confession channel", isChannel: true },
             trial: { field: "trialChannel", name: "trial channel", isChannel: true },
             counting: { field: "countingChannel", name: "counting channel", isChannel: true },
+            level: { field: "levelChannel", name: "level channel", isChannel: true },
             prefix: { field: "prefix", name: "bot prefix", isString: true }
         };
 
@@ -31,7 +32,7 @@ module.exports = {
                 .addFields(
                     { name: "```usage```", value: "`,set <type> <value>`", inline: false },
                     { name: "```roles```", value: "`mute` - mute role\n`trialrole` - trial role", inline: false },
-                    { name: "```channels```", value: "`log` - log channel\n`welcome` - welcome channel\n`confess` - confess channel\n`trial` - trial channel\n`counting` - counting channel", inline: false },
+                    { name: "```channels```", value: "`log` - log channel\n`welcome` - welcome channel\n`confess` - confess channel\n`trial` - trial channel\n`counting` - counting channel\n`level` - level up channel", inline: false },
                     { name: "```misc```", value: "`prefix` - bot prefix", inline: false },
                     { name: "```examples```", value: "`,set mute @Muted`\n`,set log #logs`\n`,set prefix !`", inline: false },
                     { name: "```view```", value: "`,set view` - see current settings", inline: false },
@@ -57,7 +58,8 @@ module.exports = {
                     { name: "```confess channel```", value: config.confessChannel ? `<#${config.confessChannel}>` : "`not set`", inline: true },
                     { name: "```trial channel```", value: config.trialChannel ? `<#${config.trialChannel}>` : "`not set`", inline: true },
                     { name: "```trial role```", value: config.trialRole ? `<@&${config.trialRole}>` : "`not set`", inline: true },
-                    { name: "```counting channel```", value: config.countingChannel ? `<#${config.countingChannel}>` : "`not set`", inline: true }
+                    { name: "```counting channel```", value: config.countingChannel ? `<#${config.countingChannel}>` : "`not set`", inline: true },
+                    { name: "```level channel```", value: config.levelChannel ? `<#${config.levelChannel}>` : "`not set`", inline: true }
                 );
             return message.reply({ embeds: [embed] });
         }
