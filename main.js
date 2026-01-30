@@ -449,11 +449,7 @@ client.on("messageCreate", async (message) => {
     if (mentionedAFK) {
       const unixTimestamp = Math.floor(mentionedAFK.timestamp.getTime() / 1000);
       const embed = new MessageEmbed()
-        .setColor(config.embedColor).setDescription(`**${mentioned.user.username}** is currently AFK.`)
-        .addFields(
-          { name: "```reason?```", value: `\`${mentionedAFK.reason || "n/a"}\``, inline: false },
-          { name: "```since?```", value: `*<t:${unixTimestamp}:R>*`, inline: false },
-        );
+        .setColor(config.embedColor).setDescription(`> 💤 **${mentioned.user.username}**: is currently AFK (${mentionedAFK.reason || "n/a"})`);
       message.channel.send({ embeds: [embed] });
     }
   }
