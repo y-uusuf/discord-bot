@@ -1,4 +1,5 @@
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
   name: "avatar",
@@ -14,7 +15,7 @@ module.exports = {
         user = await client.users.fetch(args[0]);
       } catch {
         const embed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: couldn't find anyone with that ID`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: couldn't find anyone with that ID`);
         return message.reply({ embeds: [embed] });
       }
     }
@@ -23,7 +24,7 @@ module.exports = {
     }
 
     const embed = new MessageEmbed()
-      .setDescription(`🖼️ <@${message.author.id}>: **${user.username}**'s avatar`)
+      .setColor(config.embedColor).setDescription(`🖼️ <@${message.author.id}>: **${user.username}**'s avatar`)
       .setImage(user.displayAvatarURL({ dynamic: true, size: 1024 }));
 
     message.reply({ embeds: [embed] });

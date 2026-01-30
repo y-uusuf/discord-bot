@@ -1,4 +1,5 @@
 const { MessageEmbed, MessageActionRow, MessageSelectMenu, MessageButton } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
     name: "slowmode",
@@ -6,7 +7,7 @@ module.exports = {
     async execute(client, message, args) {
         if (!message.member.permissions.has("MANAGE_CHANNELS")) {
             const embed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: you are missing **Manage Channels** permission(s) to run this command`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are missing **Manage Channels** permission(s) to run this command`);
             return message.reply({ embeds: [embed] });
         }
 
@@ -35,7 +36,7 @@ module.exports = {
         const row = new MessageActionRow().addComponents(selectMenu);
 
         const embed = new MessageEmbed()
-            .setDescription(`🐌 <@${message.author.id}>: select slowmode duration to apply to **all channels**`);
+            .setColor(config.embedColor).setDescription(`🐌 <@${message.author.id}>: select slowmode duration to apply to **all channels**`);
 
         const reply = await message.reply({ embeds: [embed], components: [row] });
 
@@ -46,30 +47,30 @@ module.exports = {
             selectInteraction = await reply.awaitMessageComponent({ filter, time: 30000 });
         } catch {
             const timeoutEmbed = new MessageEmbed()
-                .setDescription(`⏰ <@${message.author.id}>: timed out`);
+                .setColor(config.embedColor).setDescription(`⏰ <@${message.author.id}>: timed out`);
             return reply.edit({ embeds: [timeoutEmbed], components: [] });
         }
 
         const selectedValue = parseInt(selectInteraction.values[0]);
         const selectedLabel = options.find(o => o.value === selectInteraction.values[0]).label;
 
-        // Get all text channels
+        
         const textChannels = message.guild.channels.cache.filter(
             c => c.type === "GUILD_TEXT" || c.type === "GUILD_NEWS"
         );
 
-        // Check if all channels already have this slowmode
+        
         const allMatch = textChannels.every(c => c.rateLimitPerUser === selectedValue);
 
         if (allMatch) {
             const alreadyEmbed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: all channels already have slowmode set to **${selectedLabel}**`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: all channels already have slowmode set to **${selectedLabel}**`);
             return selectInteraction.update({ embeds: [alreadyEmbed], components: [] });
         }
 
-        // Confirmation
+        
         const confirmEmbed = new MessageEmbed()
-            .setDescription(`⚠️ <@${message.author.id}>: set slowmode to **${selectedLabel}** for **${textChannels.size}** channels?`);
+            .setColor(config.embedColor).setDescription(`⚠️ <@${message.author.id}>: set slowmode to **${selectedLabel}** for **${textChannels.size}** channels?`);
 
         const confirmRow = new MessageActionRow().addComponents(
             new MessageButton().setCustomId("slowmode_confirm").setLabel("Confirm").setStyle("DANGER"),
@@ -85,17 +86,17 @@ module.exports = {
             btnInteraction = await reply.awaitMessageComponent({ filter: btnFilter, time: 15000 });
         } catch {
             const timeoutEmbed = new MessageEmbed()
-                .setDescription(`⏰ <@${message.author.id}>: timed out`);
+                .setColor(config.embedColor).setDescription(`⏰ <@${message.author.id}>: timed out`);
             return reply.edit({ embeds: [timeoutEmbed], components: [] });
         }
 
         if (btnInteraction.customId === "slowmode_cancel") {
             const cancelEmbed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: cancelled`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: cancelled`);
             return btnInteraction.update({ embeds: [cancelEmbed], components: [] });
         }
 
-        // Apply slowmode to all channels
+        
         await btnInteraction.update({ content: "👍", embeds: [], components: [] });
 
         let success = 0;
@@ -111,7 +112,7 @@ module.exports = {
         }
 
         const resultEmbed = new MessageEmbed()
-            .setDescription(`🐌 <@${message.author.id}>: set slowmode to **${selectedLabel}** for **${success}** channels${failed > 0 ? ` (${failed} failed)` : ""}`);
+            .setColor(config.embedColor).setDescription(`🐌 <@${message.author.id}>: set slowmode to **${selectedLabel}** for **${success}** channels${failed > 0 ? ` (${failed} failed)` : ""}`);
 
         await message.channel.send({ embeds: [resultEmbed] });
     },

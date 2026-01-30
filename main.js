@@ -9,13 +9,14 @@ const Level = require("./models/level");
 const Webhook = require("./models/webhook");
 
 const Settings = require("./models/settings");
+const Blacklist = require("./models/blacklist");
 
 const fs = require("fs");
 const path = require("path");
 
 mongoose
   .connect(process.env.MONGO_URI, {})
-  .then(() => console.log("âœ… Successfully connected to database."));
+  .then(() => console.log("✅ Successfully connected to database."));
 
 const client = new Client({
   intents: [
@@ -37,13 +38,13 @@ client.commands = new Map();
 client.trialActive = new Set();
 client.snipes = new Map();
 
-// === ANTISPAM & ANTINUKE TRACKING ===
-client.spamTracker = new Map(); // userId -> { messages: [], warned: boolean }
-client.nukeTracker = new Map(); // oduleId -> { bans: [], kicks: [], channelDeletes: [], roleDeletes: [] }
-const SPAM_THRESHOLD = 5; // messages
-const SPAM_INTERVAL = 3000; // ms (5 messages in 3 seconds = spam)
-const NUKE_THRESHOLD = 3; // actions in 10 seconds
-const NUKE_INTERVAL = 10000; // ms
+
+client.spamTracker = new Map();
+client.nukeTracker = new Map();
+const SPAM_THRESHOLD = 5;
+const SPAM_INTERVAL = 3000;
+const NUKE_THRESHOLD = 3;
+const NUKE_INTERVAL = 10000;
 const loadedCommands = require("./handler/commandHandler")(client);
 const loadedEvents = require("./handler/eventHandler")(client);
 
@@ -57,7 +58,7 @@ const Count = mongoose.model('Count', countSchema);
 client.once("ready", () => {
   console.log("loaded commands, connected to database & logged into to the bot sucessfully.");
 
-  // Enforce Trial Channel Privacy
+
   client.guilds.cache.forEach(async (guild) => {
     try {
       const s = await Settings.findOne({ guildId: guild.id });
@@ -73,15 +74,15 @@ client.once("ready", () => {
     } catch (e) { }
   });
 
-  // Initialize counting data for any guild that has a counting channel configured
-  // This is now dynamically loaded per-guild instead of hardcoded
 
-  // === DATABASE CLEANUP ===
+
+
+
   (async () => {
-    console.log("ðŸ”„ Starting database cleanup...");
+    console.log("📄 Starting database cleanup...");
     const currentGuildIds = new Set(client.guilds.cache.keys());
 
-    // 1. Purge Settings
+
     const allSettings = await Settings.find({});
     for (const s of allSettings) {
       if (!currentGuildIds.has(s.guildId)) {
@@ -90,7 +91,7 @@ client.once("ready", () => {
       }
     }
 
-    // 2. Purge Webhooks
+
     const allWebhooks = await Webhook.find({});
     for (const w of allWebhooks) {
       if (!currentGuildIds.has(w.guildId)) {
@@ -99,7 +100,7 @@ client.once("ready", () => {
       }
     }
 
-    // 3. Purge Warnings
+
     const warnGuilds = await Warn.distinct("guildId");
     for (const gid of warnGuilds) {
       if (!currentGuildIds.has(gid)) {
@@ -108,21 +109,21 @@ client.once("ready", () => {
       }
     }
 
-    // 4. Purge Count Data
+
     const allCounts = await Count.find({});
     for (const c of allCounts) {
       try {
-        // If channel is not in cache and fetching fails, it's likely gone or bot kicked
+
         const channel = await client.channels.fetch(c.channelId).catch(() => null);
         if (!channel) {
           await Count.deleteOne({ _id: c._id });
           console.log(`[PURGE] Removed count data for unknown channel: ${c.channelId}`);
         }
       } catch (e) {
-        // Safe fallback
+
       }
     }
-    console.log("âœ… Database cleanup complete.");
+    console.log("✅ Database cleanup complete.");
   })();
 
   setInterval(async () => {
@@ -134,7 +135,7 @@ client.once("ready", () => {
         const guild = await client.guilds.fetch(doc.guildId);
         const member = await guild.members.fetch(doc.userId);
 
-        // Get jail role from settings
+
         const settings = await Settings.findOne({ guildId: doc.guildId });
         const jailRoleId = settings?.jailRole;
 
@@ -153,19 +154,8 @@ client.once("ready", () => {
   }, 60 * 1000);
 
   const embed = new MessageEmbed()
-    .setTitle("logged on.")
-    .addFields(
-      {
-        name: "```who?```",
-        value: "```" + client.user.tag + "```",
-        inline: true,
-      },
-      {
-        name: "```token?```",
-        value: `||${process.env.DISCORD_TOKEN}||`,
-        inline: true,
-      }
-    )
+    .setColor(config.embedColor).setAuthor({ name: "logged on.", iconURL: client.user.displayAvatarURL({ dynamic: true }) })
+    .setDescription(`> :bust_in_silhouette: ${client.user.tag}: sucessfully logged on.`)
     .setTimestamp();
 
   const loginChannelId = process.env.LOGIN_CHANNEL_ID;
@@ -185,7 +175,7 @@ client.once("ready", () => {
   });
 });
 
-// === MESSAGE DELETE HANDLER (for snipe) ===
+
 client.on("messageDelete", async (message) => {
   if (!message.author || message.author.bot) return;
   if (!message.guild) return;
@@ -207,7 +197,7 @@ client.on("messageDelete", async (message) => {
   const channelSnipes = client.snipes.get(message.channel.id);
   channelSnipes.push(snipeData);
 
-  // Keep only last 10 snipes per channel
+
   if (channelSnipes.length > 10) {
     channelSnipes.shift();
   }
@@ -216,16 +206,16 @@ client.on("messageDelete", async (message) => {
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  // Get settings for counting channel check
+
   const guildSettings = message.guild ? await Settings.findOne({ guildId: message.guild.id }) : null;
   const prefix = guildSettings?.prefix || config.prefix;
   const isCountingChannel = guildSettings?.countingChannel && message.channel.id === guildSettings.countingChannel;
   const isTrialChannel = guildSettings?.trialChannel && message.channel.id === guildSettings.trialChannel;
 
-  // === FLAGGED WORDS CHECK (sets flag for later logging) ===
-  // Actual logging is handled in the message logging section below
 
-  // === AUTO-REACT CHECK ===
+
+
+
   if (guildSettings?.autoReacts && guildSettings.autoReacts.size > 0) {
     const content = message.content.toLowerCase();
     for (const [trigger, emoji] of guildSettings.autoReacts) {
@@ -233,7 +223,7 @@ client.on("messageCreate", async (message) => {
         try {
           await message.react(emoji);
         } catch (e) {
-          // If reaction fails (not an emoji), try sending as text
+
           await message.channel.send(emoji).catch(() => { });
         }
       }
@@ -244,11 +234,11 @@ client.on("messageCreate", async (message) => {
     await message.delete().catch(() => { });
     return;
   }
-  // === COUNTING CHANNEL HANDLING ===
+
   if (isCountingChannel) {
     const content = message.content.trim();
 
-    // Check if it's a command
+
     if (content.startsWith(prefix)) {
       const commandName = content.slice(prefix.length).trim().split(/ +/).shift().toLowerCase();
 
@@ -259,23 +249,23 @@ client.on("messageCreate", async (message) => {
         return;
       }
 
-      // Block all other commands
+
       await message.delete().catch(() => { });
-      return message.author.send("âš ï¸ You can't use commands in the counting channel.");
+      return message.author.send("⚠️ You can't use commands in the counting channel.");
     }
 
-    // Check if message is only a number (int or float)
+
     const num = parseFloat(content);
     const isOnlyNumber = !isNaN(num) && content.match(/^[-+]?\d*\.?\d+$/);
 
     if (!isOnlyNumber) {
-      // Just a message, not a number â†’ ignore for counting
+
       return;
     }
 
     let countData = await Count.findOne({ channelId: message.channel.id });
 
-    // Auto-create count data if it doesn't exist for this configured counting channel
+
     if (!countData) {
       countData = new Count({
         channelId: message.channel.id,
@@ -287,24 +277,24 @@ client.on("messageCreate", async (message) => {
     }
 
     if (message.author.id === countData.lastUserId) {
-      await message.react("â”");
+      await message.react("❓");
       const embed = new MessageEmbed()
-        .setDescription(`> ${message.author}: â” *you can't count twice in a row!*`);
+        .setColor(config.embedColor).setDescription(`> ${message.author}: ❓ *you can't count twice in a row!*`);
       await message.reply({ embeds: [embed] });
       return;
     }
 
     if (num !== countData.currentNumber) {
-      await message.react("âŒ");
+      await message.react("❌");
       const embed = new MessageEmbed()
-        .setDescription(`> ${message.author}: âŒ *unfortunately that is the wrong number, we were looking for* **${countData.currentNumber}**. *restarting from 1.*`);
+        .setColor(config.embedColor).setDescription(`> ${message.author}: ❌ *unfortunately that is the wrong number, we were looking for* **${countData.currentNumber}**. *restarting from 1.*`);
 
       await resetCount(message, countData, { embeds: [embed] });
       return;
     }
 
-    // âœ… Success
-    await message.react("âœ…");
+
+    await message.react("✅").catch(() => { });
     countData.currentNumber++;
     countData.lastUserId = message.author.id;
     await countData.save();
@@ -312,12 +302,12 @@ client.on("messageCreate", async (message) => {
   }
 
 
-  // === CDN GIF TRIGGER ===
+
   if (message.content.includes("https://cdn.discordapp.com/attachments/1198671834871251004/1402793329095086242/issa.gif")) {
-    return message.reply("<@801125402927824918>").then(m => m.react('ðŸ˜­'));
+    return message.reply("<@801125402927824918>").then(m => m.react('😭'));
   }
 
-  // === DM CONFESS ONLY ===
+
   if (message.channel.type === "DM") {
     if (message.content.startsWith(prefix)) {
       const args = message.content.slice(prefix.length).trim().split(/ +/);
@@ -341,7 +331,7 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  // === ANTISPAM DETECTION ===
+
   const now = Date.now();
   const userId = message.author.id;
 
@@ -352,11 +342,11 @@ client.on("messageCreate", async (message) => {
   const userSpam = client.spamTracker.get(userId);
   userSpam.messages.push({ timestamp: now, messageId: message.id, channelId: message.channel.id });
 
-  // Remove old messages outside the interval
+
   userSpam.messages = userSpam.messages.filter(m => now - m.timestamp < SPAM_INTERVAL);
 
   if (userSpam.messages.length >= SPAM_THRESHOLD) {
-    // Delete all spam messages
+
     for (const msg of userSpam.messages) {
       try {
         const channel = await client.channels.fetch(msg.channelId);
@@ -365,11 +355,11 @@ client.on("messageCreate", async (message) => {
       } catch { }
     }
 
-    // Warn the user (only once per spam session)
+
     if (!userSpam.warned) {
       userSpam.warned = true;
 
-      // Add warning to database
+
       let warnDoc = await Warn.findOne({ userId, guildId: message.guild.id });
       if (!warnDoc) {
         warnDoc = new Warn({ userId, guildId: message.guild.id, warnings: [] });
@@ -382,10 +372,10 @@ client.on("messageCreate", async (message) => {
       await warnDoc.save();
 
       const warnEmbed = new MessageEmbed()
-        .setDescription(`âš ï¸ <@${userId}>: you have been warned for **spamming** (${warnDoc.warnings.length} total warnings)`);
+        .setColor(config.embedColor).setDescription(`⚠️ <@${userId}>: you have been warned for **spamming** (${warnDoc.warnings.length} total warnings)`);
       await message.channel.send({ embeds: [warnEmbed] }).catch(() => { });
 
-      // Reset after warning
+
       setTimeout(() => {
         if (client.spamTracker.has(userId)) {
           client.spamTracker.get(userId).warned = false;
@@ -397,7 +387,7 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  // === LEVEL SYSTEM ===
+
   const userID = message.author.id;
   const guildID = message.guild.id;
 
@@ -416,7 +406,7 @@ client.on("messageCreate", async (message) => {
     userData.aura += reward;
 
     const levelEmbed = new MessageEmbed()
-      .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 512 }))
+      .setColor(config.embedColor).setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 512 }))
       .setDescription(`${message.author} leveled up to level **${userData.level}**.`)
       .setFooter({
         text: `hint; use the command ",aura" to see your level & how much aura you have.`,
@@ -435,7 +425,7 @@ client.on("messageCreate", async (message) => {
         }
       );
 
-    // Send to level channel if configured, otherwise current channel
+
     const targetChannel = guildSettings?.levelChannel
       ? message.guild.channels.cache.get(guildSettings.levelChannel) || message.channel
       : message.channel;
@@ -445,12 +435,12 @@ client.on("messageCreate", async (message) => {
 
   await userData.save();
 
-  // === AFK CHECK ===
+
   const afkUser = await AFK.findOne({ userID: message.author.id });
   if (afkUser) {
     await AFK.deleteOne({ userID: message.author.id });
     const afkEmbed = new MessageEmbed()
-      .setDescription(`**${message.author.username}**, welcome back! I removed your AFK status.`);
+      .setColor(config.embedColor).setDescription(`**${message.author.username}**, welcome back! I removed your AFK status.`);
     message.channel.send({ embeds: [afkEmbed] });
   }
 
@@ -459,7 +449,7 @@ client.on("messageCreate", async (message) => {
     if (mentionedAFK) {
       const unixTimestamp = Math.floor(mentionedAFK.timestamp.getTime() / 1000);
       const embed = new MessageEmbed()
-        .setDescription(`**${mentioned.user.username}** is currently AFK.`)
+        .setColor(config.embedColor).setDescription(`**${mentioned.user.username}** is currently AFK.`)
         .addFields(
           { name: "```reason?```", value: `\`${mentionedAFK.reason || "n/a"}\``, inline: false },
           { name: "```since?```", value: `*<t:${unixTimestamp}:R>*`, inline: false },
@@ -468,12 +458,20 @@ client.on("messageCreate", async (message) => {
     }
   }
 
-  // === COMMANDS ===
+
   if (message.content.startsWith(prefix)) {
     const args = message.content.slice(prefix.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
     const command = client.commands.get(commandName);
     if (!command) return;
+
+
+    const isBlacklisted = await Blacklist.findOne({ userId: message.author.id });
+    if (isBlacklisted) {
+      const embed = new MessageEmbed()
+        .setColor(config.embedColor).setDescription(`🚫 <@${message.author.id}>: you are blacklisted from using this bot.`);
+      return message.reply({ embeds: [embed] });
+    }
 
     try {
       await command.execute(client, message, args);
@@ -484,99 +482,66 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  // === MESSAGE LOGGING ===
-  try {
-    if (message.channel.id === "1401064566984544336") {
-      message.delete().then(() =>
-        message.author.send("Sorry, you can't send messages in this channel."));
+});
+
+
+client.on("channelCreate", async (channel) => {
+  if (!channel.guild) return;
+
+  const auditLogs = await channel.guild.fetchAuditLogs({ type: "CHANNEL_CREATE", limit: 1 }).catch(() => null);
+  if (!auditLogs) return;
+
+  const entry = auditLogs.entries.first();
+  if (!entry || entry.executor.id === channel.guild.ownerId) return;
+  if (entry.executor.id === client.user.id) return;
+
+  const executorId = entry.executor.id;
+  const isBot = entry.executor.bot;
+  const now = Date.now();
+
+  if (!client.nukeTracker.has(executorId)) {
+    client.nukeTracker.set(executorId, { channelDeletes: [], channelCreates: [], roleDeletes: [], bans: [] });
+  }
+
+  const tracker = client.nukeTracker.get(executorId);
+  if (!tracker.channelCreates) tracker.channelCreates = [];
+  tracker.channelCreates.push({ time: now, channelId: channel.id });
+  tracker.channelCreates = tracker.channelCreates.filter(t => now - t.time < NUKE_INTERVAL);
+
+  if (tracker.channelCreates.length >= NUKE_THRESHOLD) {
+    const count = tracker.channelCreates.length;
+    const seconds = Math.round(NUKE_INTERVAL / 1000);
+
+    for (const c of tracker.channelCreates) {
+      const spamChannel = channel.guild.channels.cache.get(c.channelId);
+      if (spamChannel) await spamChannel.delete().catch(() => { });
+    }
+
+    if (isBot) {
+      await channel.guild.members.ban(executorId, { reason: "Antinuke: mass channel creation" }).catch(() => { });
     } else {
-      const webhookConfig = await Webhook.findOne({ guildId: message.guild.id });
-      const settingsConfig = await Settings.findOne({ guildId: message.guild.id });
-
-      // Determine content display (sticker vs attachment vs text)
-      let displayContent = message.content;
-      if (!displayContent) {
-        if (message.stickers.size > 0) {
-          displayContent = "*sticker only.*";
-        } else if (message.attachments.size > 0) {
-          displayContent = "*attachment only.*";
-        } else {
-          displayContent = "*no content.*";
-        }
-      }
-
-      // Check if message is flagged
-      const isFlagged = settingsConfig?.flaggedWords?.length > 0 &&
-        settingsConfig.flaggedWords.some(word => message.content.toLowerCase().includes(word.toLowerCase()));
-
-      const messageLink = `https://discord.com/channels/${message.guild.id}/${message.channel.id}/${message.id}`;
-      const logContent = `${displayContent}\n-# msg link: ${messageLink} | channel: <#${message.channel.id}> | usr id: ${message.author.id}`;
-
-      // Try webhook first
-      if (webhookConfig?.msgLog?.id && webhookConfig?.msgLog?.token) {
-        const webhook = new WebhookClient({
-          id: webhookConfig.msgLog.id,
-          token: webhookConfig.msgLog.token,
-        });
-
-        const basePayload = {
-          username: `${message.author.displayName} (${message.author.username})`,
-          avatarURL: message.author.displayAvatarURL({ dynamic: true }),
-        };
-
-        if (message.attachments.size > 0) {
-          const files = message.attachments.map(att => ({
-            attachment: att.url,
-            name: att.name,
-          }));
-          await webhook.send({ ...basePayload, content: logContent, files });
-        } else {
-          await webhook.send({ ...basePayload, content: logContent });
-        }
-      }
-      // Fallback to log channel from settings
-      else if (settingsConfig?.logChannel) {
-        const logChannel = await client.channels.fetch(settingsConfig.logChannel).catch(() => null);
-        if (logChannel) {
-          const logEmbed = new MessageEmbed()
-            .setAuthor({
-              name: `${message.author.username}`,
-              iconURL: message.author.displayAvatarURL({ dynamic: true })
-            })
-            .setDescription(isFlagged ? `> ðŸš© ||${displayContent}||` : displayContent)
-            .addFields(
-              { name: "Channel", value: `<#${message.channel.id}>`, inline: true },
-              { name: "User ID", value: `\`${message.author.id}\``, inline: true },
-              { name: "Message Link", value: `[Jump to message](${messageLink})`, inline: true }
-            )
-            .setTimestamp();
-
-          if (isFlagged) {
-            logEmbed.setColor("RED");
+      const member = await channel.guild.members.fetch(executorId).catch(() => null);
+      if (member) {
+        for (const role of member.roles.cache.values()) {
+          if (role.permissions.has("ADMINISTRATOR") || role.permissions.has("MANAGE_CHANNELS") || role.permissions.has("MANAGE_GUILD")) {
+            await member.roles.remove(role).catch(() => { });
           }
-
-          if (message.attachments.size > 0) {
-            const firstImage = message.attachments.find(att => att.contentType?.startsWith('image/'));
-            if (firstImage) logEmbed.setImage(firstImage.url);
-            logEmbed.addField("Attachments", message.attachments.map(a => `[${a.name}](${a.url})`).join('\n'));
-          }
-
-          // Send with ping if flagged
-          const payload = { embeds: [logEmbed] };
-          if (isFlagged && settingsConfig.flagLogPing) {
-            payload.content = `<@&${settingsConfig.flagLogPing}>`;
-          }
-
-          await logChannel.send(payload);
         }
       }
     }
-  } catch (err) {
-    console.error("Error logging message:", err);
+
+    const owner = await channel.guild.fetchOwner().catch(() => null);
+    if (owner) {
+      const embed = new MessageEmbed()
+        .setColor(config.embedColor)
+        .setDescription(`> 🛡️ <@${executorId}>: was ${isBot ? "**banned**" : "stripped of permissions"} for creating **${count} channels** in **${seconds}s** in **${channel.guild.name}**.`);
+      await owner.send({ embeds: [embed] }).catch(() => { });
+    }
+    tracker.channelCreates = [];
   }
 });
 
-// === ANTINUKE: CHANNEL DELETE ===
+
 client.on("channelDelete", async (channel) => {
   if (!channel.guild) return;
 
@@ -584,13 +549,15 @@ client.on("channelDelete", async (channel) => {
   if (!auditLogs) return;
 
   const entry = auditLogs.entries.first();
-  if (!entry || entry.executor.bot || entry.executor.id === channel.guild.ownerId) return;
+  if (!entry || entry.executor.id === channel.guild.ownerId) return;
+  if (entry.executor.id === client.user.id) return;
 
   const executorId = entry.executor.id;
+  const isBot = entry.executor.bot;
   const now = Date.now();
 
   if (!client.nukeTracker.has(executorId)) {
-    client.nukeTracker.set(executorId, { channelDeletes: [], roleDeletes: [], bans: [] });
+    client.nukeTracker.set(executorId, { channelDeletes: [], channelCreates: [], roleDeletes: [], bans: [] });
   }
 
   const tracker = client.nukeTracker.get(executorId);
@@ -598,40 +565,47 @@ client.on("channelDelete", async (channel) => {
   tracker.channelDeletes = tracker.channelDeletes.filter(t => now - t < NUKE_INTERVAL);
 
   if (tracker.channelDeletes.length >= NUKE_THRESHOLD) {
-    const member = await channel.guild.members.fetch(executorId).catch(() => null);
-    if (member) {
-      // Remove all roles with dangerous permissions
-      for (const role of member.roles.cache.values()) {
-        if (role.permissions.has("ADMINISTRATOR") || role.permissions.has("MANAGE_CHANNELS") || role.permissions.has("MANAGE_GUILD")) {
-          await member.roles.remove(role).catch(() => { });
+    const count = tracker.channelDeletes.length;
+    const seconds = Math.round(NUKE_INTERVAL / 1000);
+
+    if (isBot) {
+      await channel.guild.members.ban(executorId, { reason: "Antinuke: mass channel deletion" }).catch(() => { });
+    } else {
+      const member = await channel.guild.members.fetch(executorId).catch(() => null);
+      if (member) {
+        for (const role of member.roles.cache.values()) {
+          if (role.permissions.has("ADMINISTRATOR") || role.permissions.has("MANAGE_CHANNELS") || role.permissions.has("MANAGE_GUILD")) {
+            await member.roles.remove(role).catch(() => { });
+          }
         }
       }
+    }
 
-      const logChannel = channel.guild.channels.cache.find(c => c.name.includes("log") && c.type === "GUILD_TEXT");
-      if (logChannel) {
-        const embed = new MessageEmbed()
-          .setColor("RED")
-          .setDescription(`ðŸ›¡ï¸ **ANTINUKE:** <@${executorId}> was stripped of permissions for mass channel deletion`);
-        await logChannel.send({ embeds: [embed] }).catch(() => { });
-      }
+    const owner = await channel.guild.fetchOwner().catch(() => null);
+    if (owner) {
+      const embed = new MessageEmbed()
+        .setColor(config.embedColor)
+        .setDescription(`> 🛡️ <@${executorId}>: was ${isBot ? "**banned**" : "stripped of permissions"} for deleting **${count} channels** in **${seconds}s** in **${channel.guild.name}**.`);
+      await owner.send({ embeds: [embed] }).catch(() => { });
     }
     tracker.channelDeletes = [];
   }
 });
 
-// === ANTINUKE: ROLE DELETE ===
 client.on("roleDelete", async (role) => {
   const auditLogs = await role.guild.fetchAuditLogs({ type: "ROLE_DELETE", limit: 1 }).catch(() => null);
   if (!auditLogs) return;
 
   const entry = auditLogs.entries.first();
-  if (!entry || entry.executor.bot || entry.executor.id === role.guild.ownerId) return;
+  if (!entry || entry.executor.id === role.guild.ownerId) return;
+  if (entry.executor.id === client.user.id) return;
 
   const executorId = entry.executor.id;
+  const isBot = entry.executor.bot;
   const now = Date.now();
 
   if (!client.nukeTracker.has(executorId)) {
-    client.nukeTracker.set(executorId, { channelDeletes: [], roleDeletes: [], bans: [] });
+    client.nukeTracker.set(executorId, { channelDeletes: [], channelCreates: [], roleDeletes: [], bans: [] });
   }
 
   const tracker = client.nukeTracker.get(executorId);
@@ -639,39 +613,47 @@ client.on("roleDelete", async (role) => {
   tracker.roleDeletes = tracker.roleDeletes.filter(t => now - t < NUKE_INTERVAL);
 
   if (tracker.roleDeletes.length >= NUKE_THRESHOLD) {
-    const member = await role.guild.members.fetch(executorId).catch(() => null);
-    if (member) {
-      for (const r of member.roles.cache.values()) {
-        if (r.permissions.has("ADMINISTRATOR") || r.permissions.has("MANAGE_ROLES") || r.permissions.has("MANAGE_GUILD")) {
-          await member.roles.remove(r).catch(() => { });
+    const count = tracker.roleDeletes.length;
+    const seconds = Math.round(NUKE_INTERVAL / 1000);
+
+    if (isBot) {
+      await role.guild.members.ban(executorId, { reason: "Antinuke: mass role deletion" }).catch(() => { });
+    } else {
+      const member = await role.guild.members.fetch(executorId).catch(() => null);
+      if (member) {
+        for (const r of member.roles.cache.values()) {
+          if (r.permissions.has("ADMINISTRATOR") || r.permissions.has("MANAGE_ROLES") || r.permissions.has("MANAGE_GUILD")) {
+            await member.roles.remove(r).catch(() => { });
+          }
         }
       }
+    }
 
-      const logChannel = role.guild.channels.cache.find(c => c.name.includes("log") && c.type === "GUILD_TEXT");
-      if (logChannel) {
-        const embed = new MessageEmbed()
-          .setColor("RED")
-          .setDescription(`ðŸ›¡ï¸ **ANTINUKE:** <@${executorId}> was stripped of permissions for mass role deletion`);
-        await logChannel.send({ embeds: [embed] }).catch(() => { });
-      }
+    const owner = await role.guild.fetchOwner().catch(() => null);
+    if (owner) {
+      const embed = new MessageEmbed()
+        .setColor(config.embedColor)
+        .setDescription(`> 🛡️ <@${executorId}>: was ${isBot ? "**banned**" : "stripped of permissions"} for deleting **${count} roles** in **${seconds}s** in **${role.guild.name}**.`);
+      await owner.send({ embeds: [embed] }).catch(() => { });
     }
     tracker.roleDeletes = [];
   }
 });
 
-// === ANTINUKE: MASS BAN ===
 client.on("guildBanAdd", async (ban) => {
   const auditLogs = await ban.guild.fetchAuditLogs({ type: "MEMBER_BAN_ADD", limit: 1 }).catch(() => null);
   if (!auditLogs) return;
 
   const entry = auditLogs.entries.first();
-  if (!entry || entry.executor.bot || entry.executor.id === ban.guild.ownerId) return;
+  if (!entry || entry.executor.id === ban.guild.ownerId) return;
+  if (entry.executor.id === client.user.id) return;
 
   const executorId = entry.executor.id;
+  const isBot = entry.executor.bot;
   const now = Date.now();
 
   if (!client.nukeTracker.has(executorId)) {
-    client.nukeTracker.set(executorId, { channelDeletes: [], roleDeletes: [], bans: [] });
+    client.nukeTracker.set(executorId, { channelDeletes: [], channelCreates: [], roleDeletes: [], bans: [] });
   }
 
   const tracker = client.nukeTracker.get(executorId);
@@ -679,21 +661,28 @@ client.on("guildBanAdd", async (ban) => {
   tracker.bans = tracker.bans.filter(t => now - t < NUKE_INTERVAL);
 
   if (tracker.bans.length >= NUKE_THRESHOLD) {
-    const member = await ban.guild.members.fetch(executorId).catch(() => null);
-    if (member) {
-      for (const role of member.roles.cache.values()) {
-        if (role.permissions.has("ADMINISTRATOR") || role.permissions.has("BAN_MEMBERS") || role.permissions.has("KICK_MEMBERS")) {
-          await member.roles.remove(role).catch(() => { });
+    const count = tracker.bans.length;
+    const seconds = Math.round(NUKE_INTERVAL / 1000);
+
+    if (isBot) {
+      await ban.guild.members.ban(executorId, { reason: "Antinuke: mass banning" }).catch(() => { });
+    } else {
+      const member = await ban.guild.members.fetch(executorId).catch(() => null);
+      if (member) {
+        for (const role of member.roles.cache.values()) {
+          if (role.permissions.has("ADMINISTRATOR") || role.permissions.has("BAN_MEMBERS") || role.permissions.has("KICK_MEMBERS")) {
+            await member.roles.remove(role).catch(() => { });
+          }
         }
       }
+    }
 
-      const logChannel = ban.guild.channels.cache.find(c => c.name.includes("log") && c.type === "GUILD_TEXT");
-      if (logChannel) {
-        const embed = new MessageEmbed()
-          .setColor("RED")
-          .setDescription(`ðŸ›¡ï¸ **ANTINUKE:** <@${executorId}> was stripped of permissions for mass banning`);
-        await logChannel.send({ embeds: [embed] }).catch(() => { });
-      }
+    const owner = await ban.guild.fetchOwner().catch(() => null);
+    if (owner) {
+      const embed = new MessageEmbed()
+        .setColor(config.embedColor)
+        .setDescription(`> 🛡️ <@${executorId}>: was ${isBot ? "**banned**" : "stripped of permissions"} for banning **${count} members** in **${seconds}s** in **${ban.guild.name}**.`);
+      await owner.send({ embeds: [embed] }).catch(() => { });
     }
     tracker.bans = [];
   }
@@ -701,24 +690,24 @@ client.on("guildBanAdd", async (ban) => {
 
 console.log("Checking DISCORD_TOKEN...");
 if (!process.env.DISCORD_TOKEN) {
-  console.error("âŒ DISCORD_TOKEN is missing from environment variables!");
+  console.error("❌ DISCORD_TOKEN is missing from environment variables!");
 } else {
-  console.log("âœ… DISCORD_TOKEN is present.");
+  console.log("✅ DISCORD_TOKEN is present.");
 }
 
 console.log("Attempting to login...");
 client.login(process.env.DISCORD_TOKEN)
-  .then(() => console.log("âœ… client.login() promise resolved."))
-  .catch(err => console.error("âŒ client.login() failed:", err));
+  .then(() => console.log("✅ client.login() promise resolved."))
+  .catch(err => console.error("❌ client.login() failed:", err));
 
-// === EXPRESS KEEP-ALIVE ===
+
 const express = require("express");
 const app = express();
 app.get("/", (req, res) => res.send("Bot is running!"));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Express server listening on port ${PORT}`));
 
-// === COUNT RESET FUNCTION ===
+
 async function resetCount(message, countData, reason) {
   await message.reply(reason);
   countData.currentNumber = 1;

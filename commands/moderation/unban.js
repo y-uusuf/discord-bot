@@ -1,18 +1,19 @@
 const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
   name: "unban",
   async execute(client, message, args) {
     if (!message.member.permissions.has("BAN_MEMBERS")) {
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: you are missing **Ban Members** permission(s) to run this command`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are missing **Ban Members** permission(s) to run this command`);
       return message.reply({ embeds: [embed] });
     }
 
     const userId = args[0];
     if (!userId) {
       const embed = new MessageEmbed()
-        .setDescription(`🔓 <@${message.author.id}>: unbans a previously banned member.\n\n**usage:** \`,unban <id>\`\n**example:** \`,unban 123456789\``);
+        .setColor(config.embedColor).setDescription(`🔓 <@${message.author.id}>: unbans a previously banned member.\n\n**usage:** \`,unban <id>\`\n**example:** \`,unban 123456789\``);
       return message.reply({ embeds: [embed] });
     }
 
@@ -21,13 +22,13 @@ module.exports = {
       user = await message.guild.bans.fetch(userId);
     } catch {
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: couldn't find anyone banned with this ID`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: couldn't find anyone banned with this ID`);
       return message.reply({ embeds: [embed] });
     }
 
-    // Confirmation embed
+    
     const confirmEmbed = new MessageEmbed()
-      .setDescription(`⚠️ <@${message.author.id}>: are you sure you want to unban **${user.user.tag}**?`);
+      .setColor(config.embedColor).setDescription(`⚠️ <@${message.author.id}>: are you sure you want to unban **${user.user.tag}**?`);
 
     const row = new MessageActionRow()
       .addComponents(
@@ -53,18 +54,18 @@ module.exports = {
         await interaction.update({ content: "👍", embeds: [], components: [] });
       } else {
         const cancelEmbed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: ${user.user.tag} was not unbanned`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: ${user.user.tag} was not unbanned`);
         await interaction.update({ embeds: [cancelEmbed], components: [] });
       }
     } catch (error) {
       if (error.code === "INTERACTION_COLLECTOR_ERROR") {
         const timeoutEmbed = new MessageEmbed()
-          .setDescription(`⏰ <@${message.author.id}>: no response received, unban cancelled`);
+          .setColor(config.embedColor).setDescription(`⏰ <@${message.author.id}>: no response received, unban cancelled`);
         await confirmMsg.edit({ embeds: [timeoutEmbed], components: [] });
       } else {
         console.error(error);
         const embed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: couldn't unban them`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: couldn't unban them`);
         message.reply({ embeds: [embed] });
       }
     }

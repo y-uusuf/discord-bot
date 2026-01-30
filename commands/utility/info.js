@@ -1,4 +1,5 @@
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
   name: "info",
@@ -18,12 +19,12 @@ module.exports = {
           user = await client.users.fetch(input);
         } catch {
           const embed = new MessageEmbed()
-            .setDescription(`❌ <@${message.author.id}>: couldn't find a user with that ID`);
+            .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: couldn't find a user with that ID`);
           return message.reply({ embeds: [embed] });
         }
       } else {
         const embed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: please mention a valid user or ID`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: please mention a valid user or ID`);
         return message.reply({ embeds: [embed] });
       }
     }
@@ -44,7 +45,7 @@ module.exports = {
     }
 
     const embed = new MessageEmbed()
-      .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL({ dynamic: true }) })
+      .setColor(config.embedColor).setAuthor({ name: user.tag, iconURL: user.displayAvatarURL({ dynamic: true }) })
       .setDescription(info)
       .setThumbnail(user.displayAvatarURL({ dynamic: true }));
 

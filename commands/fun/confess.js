@@ -1,24 +1,25 @@
 const { MessageEmbed, MessageActionRow, MessageSelectMenu } = require("discord.js");
+const config = require("../../config.json");
 const Settings = require("../../models/settings");
 
 module.exports = {
     name: 'confess',
     async execute(client, message, args) {
-        // 1. Enforce DMs
+        
         if (message.guild) {
             await message.delete().catch(() => { });
             try {
                 await message.author.send("you can't confess here. please DM me your confession to remain anonymous.");
             } catch (e) {
-                // DMs closed, ignore
+                
             }
             return;
         }
 
-        // 2. Usage Embed (Standardized)
+        
         if (!args.length) {
             const embed = new MessageEmbed()
-                .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+                .setColor(config.embedColor).setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
                 .setDescription("send an anonymous confession to the server.")
                 .addFields(
                     { name: "```usage```", value: "`,confess <message>`", inline: false },
@@ -29,7 +30,7 @@ module.exports = {
 
         const confession = args.join(' ');
 
-        // 3. Find Available Guilds (Mutual guilds with config)
+        
         const availableGuilds = [];
         for (const [id, g] of client.guilds.cache) {
             try {
@@ -49,7 +50,7 @@ module.exports = {
 
         let guild;
 
-        // 4. Handle Server Selection
+        
         if (availableGuilds.length > 1) {
             const row = new MessageActionRow()
                 .addComponents(
@@ -73,7 +74,7 @@ module.exports = {
                 const interaction = await prompt.awaitMessageComponent({ filter, time: 30000 });
                 guild = client.guilds.cache.get(interaction.values[0]);
 
-                // Update message to remove dropdown and show selection
+                
                 await interaction.update({
                     content: `selected **${guild.name}**. sending confession...`,
                     components: []
@@ -86,9 +87,9 @@ module.exports = {
             guild = availableGuilds[0];
         }
 
-        if (!guild) return; // Should not happen unless guild left mid-process
+        if (!guild) return; 
 
-        // 5. Check Settings Again (Safety)
+        
         const settings = await Settings.findOne({ guildId: guild.id });
         if (!settings || !settings.confessChannel) {
             return message.reply(`confessions are not configured for **${guild.name}**. ask an admin to set a confess channel.`);
@@ -99,7 +100,7 @@ module.exports = {
             return message.reply("the configured confession channel no longer exists.");
         }
 
-        // 6. Webhook Logic
+        
         let webhook;
         try {
             const webhooks = await channel.fetchWebhooks();
@@ -115,9 +116,9 @@ module.exports = {
             return message.reply("failed to manage webhooks for confession (missing permissions?).");
         }
 
-        // 7. Build Embed & Send
+        
         const embed = new MessageEmbed()
-            .setAuthor({ name: "someone has made a confession." })
+            .setColor(config.embedColor).setAuthor({ name: "someone has made a confession." })
             .setDescription(`"__${confession}__"`)
             .setFooter({ text: "sent anonymously via DMs // do the same with \",confess\"." })
             .setTimestamp();
@@ -129,7 +130,7 @@ module.exports = {
                 embeds: [embed]
             });
 
-            // Final Confirmation
+            
             await message.reply(`your confession has been sent anonymously to **${guild.name}**!`);
 
         } catch (err) {

@@ -1,4 +1,5 @@
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
   name: "mic",
@@ -11,7 +12,7 @@ module.exports = {
       return message.reply("please mention a user, channel, provide an ID, or use `all`.");
     }
 
-    // Unmute all members in all voice channels
+    
     if (args[0].toLowerCase() === "all") {
       let unmuted = [];
 
@@ -27,7 +28,7 @@ module.exports = {
       }
 
       const embed = new MessageEmbed()
-        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setColor(config.embedColor).setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setDescription(unmuted.join("\n"))
         .setFooter({ text: `total unmuted: ${unmuted.length} | by ${message.author.tag}` })
         .setTimestamp();
@@ -35,7 +36,7 @@ module.exports = {
       return message.channel.send({ embeds: [embed] });
     }
 
-    // Unmute all in a specific voice channel
+    
     const channel = message.mentions.channels.first() || message.guild.channels.cache.get(args[0]);
     if (channel && channel.type === "GUILD_VOICE") {
       let unmuted = [];
@@ -52,7 +53,7 @@ module.exports = {
       }
 
       const embed = new MessageEmbed()
-        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setColor(config.embedColor).setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setDescription(unmuted.join("\n"))
         .setFooter({ text: `total unmuted: ${unmuted.length} | by ${message.author.tag}` })
         .setTimestamp();
@@ -60,7 +61,7 @@ module.exports = {
       return message.channel.send({ embeds: [embed] });
     }
 
-    // Unmute a single user
+    
     const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
 
     if (!target) {
@@ -79,7 +80,7 @@ module.exports = {
       await target.voice.setMute(false, `Successfully unmuted.`);
 
       const embed = new MessageEmbed()
-        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setColor(config.embedColor).setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .addFields(
           { name: "```user```", value: `\`${target.user.tag}\``, inline: true },
           { name: "```by```", value: `\`${message.author.tag}\``, inline: true }

@@ -1,5 +1,6 @@
 const { MessageEmbed } = require("discord.js");
-const Level = require("../../models/level"); // adjust path as needed
+const config = require("../../config.json");
+const Level = require("../../models/level"); 
 
 module.exports = {
   name: "aura",
@@ -24,7 +25,7 @@ module.exports = {
     }
 
     const embed = new MessageEmbed()
-      .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+      .setColor(config.embedColor).setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
       .setThumbnail(target.displayAvatarURL({ dynamic: true }))
       .addFields(
         { name: "```level```", value: `\`${userData.level}.\``, inline: true },

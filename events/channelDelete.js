@@ -3,7 +3,7 @@ const TempVoice = require("../models/tempVoice");
 module.exports = {
     name: "channelDelete",
     async execute(channel, client) {
-        // Check if the deleted channel was a Temp Voice channel
+        
         const tempVoice = await TempVoice.findOne({ channelId: channel.id });
 
         if (tempVoice) {

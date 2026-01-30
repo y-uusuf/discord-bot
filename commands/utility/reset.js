@@ -1,4 +1,5 @@
 const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
+const config = require("../../config.json");
 const Settings = require("../../models/settings");
 const Warn = require("../../models/warn");
 const Webhook = require("../../models/webhook");
@@ -8,10 +9,10 @@ module.exports = {
     name: "reset",
     description: "Resets all database data for this guild (Restricted)",
     async execute(client, message, args) {
-        // Restricted to specific user
-        if (message.author.id !== "1459515101487829148") {
+        
+        if (message.author.id !== process.env.OWNER_ID) {
             const embed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: you are not authorized to use this command.`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are not authorized to use this command.`);
             return message.reply({ embeds: [embed] });
         }
 
@@ -39,14 +40,14 @@ module.exports = {
             try {
                 const guildId = message.guild.id;
 
-                // Delete Data
+                
                 await Settings.deleteMany({ guildId });
                 await Warn.deleteMany({ guildId });
                 await Webhook.deleteMany({ guildId });
                 await TempVoice.deleteMany({ guildId });
 
                 const successEmbed = new MessageEmbed()
-                    .setColor("GREEN")
+                    .setColor(config.embedColor)
                     .setDescription(`✅ ${message.author}: all database data for this guild has been wiped.`);
 
                 await i.editReply({ embeds: [successEmbed], components: [] });

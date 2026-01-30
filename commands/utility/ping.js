@@ -1,4 +1,5 @@
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
   name: "ping",
@@ -11,13 +12,13 @@ module.exports = {
       const latency = end - start;
 
       const embed = new MessageEmbed()
-        .setDescription(`🏓 <@${message.author.id}>: **${latency}ms** latency, **${Math.round(client.ws.ping)}ms** API`);
+        .setColor(config.embedColor).setDescription(`🏓 <@${message.author.id}>: **${latency}ms** latency, **${Math.round(client.ws.ping)}ms** API`);
 
       await msg.edit({ content: null, embeds: [embed] });
     } catch (e) {
       console.error("Ping command failed:", e);
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: ping failed`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: ping failed`);
       message.channel.send({ embeds: [embed] });
     }
   },

@@ -1,4 +1,5 @@
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
     name: "snipe",
@@ -8,14 +9,14 @@ module.exports = {
 
         if (!snipes || snipes.length === 0) {
             const embed = new MessageEmbed()
-                .setDescription("there's nothing to snipe.");
+                .setColor(config.embedColor).setDescription("there's nothing to snipe.");
             return message.reply({ embeds: [embed] });
         }
 
         const snipe = snipes[snipes.length - 1];
 
         const embed = new MessageEmbed()
-            .setAuthor({
+            .setColor(config.embedColor).setAuthor({
                 name: snipe.author.tag,
                 iconURL: snipe.author.displayAvatarURL({ dynamic: true })
             })

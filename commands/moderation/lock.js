@@ -1,11 +1,12 @@
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
   name: 'lock',
   async execute(client, message, args) {
     if (!message.member.permissions.has('MANAGE_CHANNELS')) {
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: you are missing **Manage Channels** permission(s) to run this command`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are missing **Manage Channels** permission(s) to run this command`);
       return message.reply({ embeds: [embed] });
     }
 
@@ -16,7 +17,7 @@ module.exports = {
 
     if (!target) {
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: please provide a valid channel to lock`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: please provide a valid channel to lock`);
       return message.reply({ embeds: [embed] });
     }
 
@@ -26,7 +27,7 @@ module.exports = {
 
       if (!isVoice && !isText) {
         const embed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: this channel type is not supported`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: this channel type is not supported`);
         return message.reply({ embeds: [embed] });
       }
 
@@ -35,13 +36,13 @@ module.exports = {
       });
 
       const embed = new MessageEmbed()
-        .setDescription(`🔒 <@${message.author.id}>: locked <#${target.id}>`);
+        .setColor(config.embedColor).setDescription(`🔒 <@${message.author.id}>: locked <#${target.id}>`);
 
       message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error(err);
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: couldn't lock the channel`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: couldn't lock the channel`);
       message.reply({ embeds: [embed] });
     }
   },

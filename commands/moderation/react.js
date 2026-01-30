@@ -1,4 +1,5 @@
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 const Settings = require("../../models/settings");
 
 module.exports = {
@@ -6,7 +7,7 @@ module.exports = {
     async execute(client, message, args) {
         if (!message.member.permissions.has("ADMINISTRATOR")) {
             const embed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: you are missing **Administrator** permission(s) to run this command`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are missing **Administrator** permission(s) to run this command`);
             return message.reply({ embeds: [embed] });
         }
 
@@ -14,7 +15,7 @@ module.exports = {
 
         if (!action || !["add", "remove", "list"].includes(action)) {
             const embed = new MessageEmbed()
-                .setDescription(`😀 <@${message.author.id}>: manage auto-reactions (or text responses) for specific words.\n\n**usage:**\n\`,react add <trigger> <emoji/text>\`\n\`,react remove <trigger>\`\n\`,react list\``);
+                .setColor(config.embedColor).setDescription(`😀 <@${message.author.id}>: manage auto-reactions (or text responses) for specific words.\n\n**usage:**\n\`,react add <trigger> <emoji/text>\`\n\`,react remove <trigger>\`\n\`,react list\``);
             return message.reply({ embeds: [embed] });
         }
 
@@ -23,7 +24,7 @@ module.exports = {
         if (action === "list") {
             if (!settings?.autoReacts || settings.autoReacts.size === 0) {
                 const embed = new MessageEmbed()
-                    .setDescription(`📋 <@${message.author.id}>: no auto-reactions configured`);
+                    .setColor(config.embedColor).setDescription(`📋 <@${message.author.id}>: no auto-reactions configured`);
                 return message.reply({ embeds: [embed] });
             }
 
@@ -32,7 +33,7 @@ module.exports = {
                 .join("\n");
 
             const embed = new MessageEmbed()
-                .setDescription(`📋 <@${message.author.id}>: auto-reactions\n\n${list}`);
+                .setColor(config.embedColor).setDescription(`📋 <@${message.author.id}>: auto-reactions\n\n${list}`);
 
             return message.reply({ embeds: [embed] });
         }
@@ -43,7 +44,7 @@ module.exports = {
 
             if (!trigger || !emoji) {
                 const embed = new MessageEmbed()
-                    .setDescription(`❌ <@${message.author.id}>: please provide a trigger word and emoji`);
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: please provide a trigger word and emoji`);
                 return message.reply({ embeds: [embed] });
             }
 
@@ -54,7 +55,7 @@ module.exports = {
             );
 
             const embed = new MessageEmbed()
-                .setDescription(`😀 <@${message.author.id}>: added auto-reaction: \`${trigger}\` → ${emoji}`);
+                .setColor(config.embedColor).setDescription(`😀 <@${message.author.id}>: added auto-reaction: \`${trigger}\` → ${emoji}`);
             return message.reply({ embeds: [embed] });
         }
 
@@ -63,13 +64,13 @@ module.exports = {
 
             if (!trigger) {
                 const embed = new MessageEmbed()
-                    .setDescription(`❌ <@${message.author.id}>: please provide the trigger word to remove`);
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: please provide the trigger word to remove`);
                 return message.reply({ embeds: [embed] });
             }
 
             if (!settings?.autoReacts?.has(trigger)) {
                 const embed = new MessageEmbed()
-                    .setDescription(`❌ <@${message.author.id}>: no auto-reaction found for \`${trigger}\``);
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: no auto-reaction found for \`${trigger}\``);
                 return message.reply({ embeds: [embed] });
             }
 
@@ -79,7 +80,7 @@ module.exports = {
             );
 
             const embed = new MessageEmbed()
-                .setDescription(`😀 <@${message.author.id}>: removed auto-reaction for \`${trigger}\``);
+                .setColor(config.embedColor).setDescription(`😀 <@${message.author.id}>: removed auto-reaction for \`${trigger}\``);
             return message.reply({ embeds: [embed] });
         }
     },

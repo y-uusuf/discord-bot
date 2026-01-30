@@ -5,7 +5,7 @@ module.exports = (client) => {
     const loadedCommands = [];
     const commandsPath = path.join(__dirname, "../commands");
 
-    // Recursive function to read commands from nested folders
+    
     const readCommands = (dir) => {
         const files = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -18,7 +18,7 @@ module.exports = (client) => {
                     client.commands.set(command.name, command);
                     loadedCommands.push(command.name);
 
-                    // Register aliases
+                    
                     if (command.aliases && Array.isArray(command.aliases)) {
                         for (const alias of command.aliases) {
                             client.commands.set(alias, command);

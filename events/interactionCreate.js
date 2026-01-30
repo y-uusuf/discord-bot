@@ -1,39 +1,40 @@
 const { Modal, TextInputComponent, MessageActionRow, MessageEmbed, MessageButton } = require("discord.js");
+const config = require("../config.json");
 const TempVoice = require("../models/tempVoice");
 
 module.exports = {
     name: "interactionCreate",
     async execute(interaction, client) {
-        // We handle Buttons and Modals here.
-        // User Select Menus (Type 5) are handled in 'events/raw.js'.
+        
+        
         if (!interaction.isButton() && !interaction.isModalSubmit()) return;
 
-        // --- BUTTON HANDLING ---
+        
         if (interaction.isButton()) {
             if (!interaction.customId.startsWith("vc_")) return;
 
             const action = interaction.customId.replace("vc_", "");
 
-            // 1. Claim Logic (Kept separate)
+            
             if (action === "claim") {
                 const currentChannel = interaction.member.voice.channel;
                 if (!currentChannel) {
-                    const embed = new MessageEmbed().setDescription(`❌ <@${interaction.user.id}>: you must be in a voice channel to claim it.`);
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: you must be in a voice channel to claim it.`);
                     return interaction.reply({ embeds: [embed], ephemeral: true });
                 }
 
                 const tempVoice = await TempVoice.findOne({ channelId: currentChannel.id });
                 if (!tempVoice) {
-                    const embed = new MessageEmbed().setDescription(`❌ <@${interaction.user.id}>: this is not a temporary voice channel.`);
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: this is not a temporary voice channel.`);
                     return interaction.reply({ embeds: [embed], ephemeral: true });
                 }
 
                 if (currentChannel.members.has(tempVoice.ownerId)) {
-                    const embed = new MessageEmbed().setDescription(`❌ <@${interaction.user.id}>: the owner <@${tempVoice.ownerId}> is still in the channel.`);
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: the owner <@${tempVoice.ownerId}> is still in the channel.`);
                     return interaction.reply({ embeds: [embed], ephemeral: true });
                 }
 
-                // Claim it
+                
                 tempVoice.ownerId = interaction.user.id;
                 await tempVoice.save();
 
@@ -43,45 +44,45 @@ module.exports = {
                     CONNECT: true
                 });
 
-                const embed = new MessageEmbed().setDescription(`> 👑 <@${interaction.user.id}>: you have claimed this channel.`);
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 👑 <@${interaction.user.id}>: you have claimed this channel.`);
                 return interaction.reply({ embeds: [embed], ephemeral: true });
             }
 
-            // --- STRICT CHECKS ---
+            
             if (!interaction.member.voice.channel) {
-                const embed = new MessageEmbed().setDescription(`❌ <@${interaction.user.id}>: you must be in a voice channel to manage it.`);
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: you must be in a voice channel to manage it.`);
                 return interaction.reply({ embeds: [embed], ephemeral: true });
             }
 
             const currentChannel = interaction.member.voice.channel;
 
-            // 2. Check if Current Channel is a Temp Channel
+            
             const tempVoice = await TempVoice.findOne({ channelId: currentChannel.id });
 
             if (!tempVoice) {
-                const embed = new MessageEmbed().setDescription(`❌ <@${interaction.user.id}>: you don't have ownership over <#${currentChannel.id}>.`);
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: you don't have ownership over <#${currentChannel.id}>.`);
                 return interaction.reply({ embeds: [embed], ephemeral: true });
             }
 
-            // 3. User must be the Owner
+            
             if (tempVoice.ownerId !== interaction.user.id) {
-                const embed = new MessageEmbed().setDescription(`❌ <@${interaction.user.id}>: you don't have ownership over <#${currentChannel.id}>.`);
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: you don't have ownership over <#${currentChannel.id}>.`);
                 return interaction.reply({ embeds: [embed], ephemeral: true });
             }
 
-            // 4. Success
+            
             const channel = currentChannel;
 
 
-            // Helper to send "User Select Menu" (Type 5) via client.api
-            // Includes formatted Embed: "> emoji user: text" (lowercase)
+            
+            
             const sendUserSelect = async (customId, placeholder, emoji) => {
                 try {
-                    // Force lowercase for aesthetic
+                    
                     const text = placeholder.toLowerCase();
 
                     const promptEmbed = new MessageEmbed()
-                        .setDescription(`> ${emoji} <@${interaction.user.id}>: **${text}.**`)
+                        .setColor(config.embedColor).setDescription(`> ${emoji} <@${interaction.user.id}>: **${text}.**`)
                         .toJSON();
 
                     await client.api.interactions(interaction.id, interaction.token).callback.post({
@@ -104,12 +105,12 @@ module.exports = {
                     });
                 } catch (err) {
                     console.error("Failed to send User Select via API:", err);
-                    const embed = new MessageEmbed().setDescription(`❌ <@${interaction.user.id}>: error displaying selection menu.`);
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: error displaying selection menu.`);
                     interaction.followUp({ embeds: [embed], ephemeral: true }).catch(() => { });
                 }
             };
 
-            // Switch Actions
+            
             switch (action) {
                 case "name":
                     const nameModal = new Modal().setCustomId("vc_modal_name").setTitle("Change Channel Name");
@@ -129,7 +130,7 @@ module.exports = {
                     await channel.permissionOverwrites.edit(interaction.guild.id, { CONNECT: false });
                     tempVoice.locked = true;
                     await tempVoice.save();
-                    const lockEmbed = new MessageEmbed().setDescription(`> 🔒 <@${interaction.user.id}>: channel locked.`);
+                    const lockEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔒 <@${interaction.user.id}>: channel locked.`);
                     await interaction.reply({ embeds: [lockEmbed], ephemeral: true });
                     break;
 
@@ -137,7 +138,7 @@ module.exports = {
                     await channel.permissionOverwrites.edit(interaction.guild.id, { CONNECT: null });
                     tempVoice.locked = false;
                     await tempVoice.save();
-                    const unlockEmbed = new MessageEmbed().setDescription(`> 🔓 <@${interaction.user.id}>: channel unlocked.`);
+                    const unlockEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔓 <@${interaction.user.id}>: channel unlocked.`);
                     await interaction.reply({ embeds: [unlockEmbed], ephemeral: true });
                     break;
 
@@ -145,7 +146,7 @@ module.exports = {
                     await channel.permissionOverwrites.edit(interaction.guild.id, { VIEW_CHANNEL: false });
                     tempVoice.hidden = true;
                     await tempVoice.save();
-                    const hideEmbed = new MessageEmbed().setDescription(`> 👻 <@${interaction.user.id}>: channel hidden.`);
+                    const hideEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 👻 <@${interaction.user.id}>: channel hidden.`);
                     await interaction.reply({ embeds: [hideEmbed], ephemeral: true });
                     break;
 
@@ -153,12 +154,12 @@ module.exports = {
                     await channel.permissionOverwrites.edit(interaction.guild.id, { VIEW_CHANNEL: null });
                     tempVoice.hidden = false;
                     await tempVoice.save();
-                    const unhideEmbed = new MessageEmbed().setDescription(`> 👀 <@${interaction.user.id}>: channel unhidden.`);
+                    const unhideEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 👀 <@${interaction.user.id}>: channel unhidden.`);
                     await interaction.reply({ embeds: [unhideEmbed], ephemeral: true });
                     break;
 
                 case "delete":
-                    const deleteEmbed = new MessageEmbed().setDescription(`> 🗑️ <@${interaction.user.id}>: deleting channel...`);
+                    const deleteEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🗑️ <@${interaction.user.id}>: deleting channel...`);
                     await interaction.reply({ embeds: [deleteEmbed], ephemeral: true });
                     await channel.delete().catch(() => { });
                     await TempVoice.deleteOne({ channelId: channel.id });
@@ -184,12 +185,12 @@ module.exports = {
                     break;
 
                 default:
-                    const unknownEmbed = new MessageEmbed().setDescription(`❌ <@${interaction.user.id}>: unknown action.`);
+                    const unknownEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: unknown action.`);
                     interaction.reply({ embeds: [unknownEmbed], ephemeral: true });
             }
         }
 
-        // --- MODAL SUBMIT HANDLING ---
+        
         if (interaction.isModalSubmit()) {
             const tempVoice = await TempVoice.findOne({ ownerId: interaction.user.id });
             if (!tempVoice) return;
@@ -203,7 +204,7 @@ module.exports = {
                 if (interaction.customId === "vc_modal_name") {
                     const name = getValue("name_input");
                     await channel.setName(name);
-                    const embed = new MessageEmbed().setDescription(`> ✏️ <@${interaction.user.id}>: renamed to **${name}**.`);
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> ✏️ <@${interaction.user.id}>: renamed to **${name}**.`);
                     interaction.reply({ embeds: [embed], ephemeral: true });
                 }
                 else if (interaction.customId === "vc_modal_limit") {
@@ -212,13 +213,13 @@ module.exports = {
                         await channel.setUserLimit(limit);
                         tempVoice.limit = limit;
                         await tempVoice.save();
-                        const embed = new MessageEmbed().setDescription(`> 👥 <@${interaction.user.id}>: limit set to **${limit}**.`);
+                        const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 👥 <@${interaction.user.id}>: limit set to **${limit}**.`);
                         interaction.reply({ embeds: [embed], ephemeral: true });
                     }
                 }
             } catch (e) {
                 console.error(e);
-                const embed = new MessageEmbed().setDescription(`❌ <@${interaction.user.id}>: failed to update settings.`);
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: failed to update settings.`);
                 interaction.reply({ embeds: [embed], ephemeral: true });
             }
         }

@@ -1,5 +1,6 @@
 const AFK = require("../../models/afk");
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
   name: "afk",
@@ -11,7 +12,7 @@ module.exports = {
 
       if (existing) {
         const embed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: you are already marked as AFK`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are already marked as AFK`);
         return message.reply({ embeds: [embed] });
       }
 
@@ -22,14 +23,14 @@ module.exports = {
       });
 
       const embed = new MessageEmbed()
-        .setDescription(`💤 <@${message.author.id}>: you're now AFK - ${reason}`);
+        .setColor(config.embedColor).setDescription(`💤 <@${message.author.id}>: you're now AFK - ${reason}`);
 
       return message.channel.send({ embeds: [embed] });
 
     } catch (err) {
       console.error(err);
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: there was an error setting your AFK status`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: there was an error setting your AFK status`);
       return message.reply({ embeds: [embed] });
     }
   },

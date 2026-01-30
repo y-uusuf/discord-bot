@@ -15,3 +15,5 @@ Thumbs.db
 
 # Optional: ignore VSCode settings if you use it
 .vscode/
+
+push.py

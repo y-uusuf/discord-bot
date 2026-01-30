@@ -1,28 +1,29 @@
 const { MessageEmbed, MessageActionRow, MessageButton, Permissions } = require("discord.js");
+const config = require("../../config.json");
 const Settings = require("../../models/settings");
 
 module.exports = {
     name: "trial",
     async execute(client, message, args) {
-        // 1. Permissions Check
+        
         if (!message.member.permissions.has("ADMINISTRATOR")) {
             const embed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: you are missing **Administrator** permission(s) to run this command`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are missing **Administrator** permission(s) to run this command`);
             return message.reply({ embeds: [embed] });
         }
 
         const target = message.mentions.members.first();
         if (!target) {
             const embed = new MessageEmbed()
-                .setDescription(`⚖️ <@${message.author.id}>: please mention a user to put on trial`);
+                .setColor(config.embedColor).setDescription(`⚖️ <@${message.author.id}>: please mention a user to put on trial`);
             return message.reply({ embeds: [embed] });
         }
 
-        // 2. Settings Check
+        
         const settings = await Settings.findOne({ guildId: message.guild.id });
         if (!settings?.trialChannel || !settings?.trialRole) {
             const embed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: trial channel or role not set. use \`,set trial <#channel>\` and \`,set trialrole <@role>\``);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: trial channel or role not set. use \`,set trial <#channel>\` and \`,set trialrole <@role>\``);
             return message.reply({ embeds: [embed] });
         }
 
@@ -31,13 +32,13 @@ module.exports = {
 
         if (!trialChannel || !trialRole) {
             const embed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: configured trial channel or role no longer exists`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: configured trial channel or role no longer exists`);
             return message.reply({ embeds: [embed] });
         }
 
-        // 3. Confirmation
+        
         const confirmEmbed = new MessageEmbed()
-            .setDescription(`⚠️ <@${message.author.id}>: are you sure you want to put **${target.user.username}** on trial?`);
+            .setColor(config.embedColor).setDescription(`⚠️ <@${message.author.id}>: are you sure you want to put **${target.user.username}** on trial?`);
 
         const row = new MessageActionRow().addComponents(
             new MessageButton().setCustomId("trial_confirm").setLabel("Confirm").setStyle("DANGER"),
@@ -46,7 +47,7 @@ module.exports = {
 
         const reply = await message.reply({ embeds: [confirmEmbed], components: [row] });
 
-        // Create collector for confirmation
+        
         const filter = i => i.user.id === message.author.id && ["trial_confirm", "trial_cancel"].includes(i.customId);
 
         let interaction;
@@ -54,30 +55,30 @@ module.exports = {
             interaction = await reply.awaitMessageComponent({ filter, time: 30000 });
         } catch {
             const embed = new MessageEmbed()
-                .setDescription(`⏰ <@${message.author.id}>: timed out`);
+                .setColor(config.embedColor).setDescription(`⏰ <@${message.author.id}>: timed out`);
             return reply.edit({ embeds: [embed], components: [] });
         }
 
         if (interaction.customId === "trial_cancel") {
             const embed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: trial cancelled`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: trial cancelled`);
             return interaction.update({ embeds: [embed], components: [] });
         }
 
-        // 4. Trial Setup
+        
         await interaction.deferUpdate();
         await reply.edit({ content: "👍", embeds: [], components: [] });
 
-        // Mark trial as active
+        
         if (client.trialActive) client.trialActive.add(message.guild.id);
 
-        // Apply Role
+        
         await target.roles.add(trialRole).catch(() => { });
 
-        // Set Permissions: Everyone View+NoSend, Target View+Send
+        
         await trialChannel.permissionOverwrites.set([
             {
-                id: message.guild.id, // @everyone
+                id: message.guild.id, 
                 allow: [Permissions.FLAGS.VIEW_CHANNEL],
                 deny: [Permissions.FLAGS.SEND_MESSAGES, Permissions.FLAGS.ADD_REACTIONS, Permissions.FLAGS.CREATE_PUBLIC_THREADS]
             },
@@ -91,20 +92,20 @@ module.exports = {
             }
         ]);
 
-        // Ping Everyone
+        
         await trialChannel.send("@everyone");
 
         const bannerEmbed = new MessageEmbed()
-            .setDescription(`⚖️ <@${message.author.id}>: **${target.user.username}** is fighting for their stay!\n\n**task:** guess the number between **1 and 10**. you have **3 attempts**.`);
+            .setColor(config.embedColor).setDescription(`⚖️ <@${message.author.id}>: **${target.user.username}** is fighting for their stay!\n\n**task:** guess the number between **1 and 10**. you have **3 attempts**.`);
 
         await trialChannel.send({ embeds: [bannerEmbed] });
 
-        // 5. Game Loop
+        
         const winningNumber = Math.floor(Math.random() * 10) + 1;
         let attempts = 3;
         let won = false;
 
-        // Collector for Game
+        
         const gameFilter = m => m.author.id === target.id;
         const collector = trialChannel.createMessageCollector({
             filter: () => true,
@@ -121,7 +122,7 @@ module.exports = {
                 const guess = parseInt(m.content);
 
                 if (isNaN(guess) || guess < 1 || guess > 10) {
-                    const warning = await trialChannel.send({ embeds: [new MessageEmbed().setDescription(`❌ <@${target.id}>: please enter a valid number between 1 and 10`)] });
+                    const warning = await trialChannel.send({ embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${target.id}>: please enter a valid number between 1 and 10`)] });
                     setTimeout(() => warning.delete().catch(() => { }), 3000);
                     return;
                 }
@@ -135,7 +136,7 @@ module.exports = {
                     if (attempts <= 0) {
                         collector.stop("lost");
                     } else {
-                        const wrong = await trialChannel.send({ embeds: [new MessageEmbed().setDescription(`❌ <@${target.id}>: wrong number. ${attempts} attempts remaining`)] });
+                        const wrong = await trialChannel.send({ embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${target.id}>: wrong number. ${attempts} attempts remaining`)] });
                         setTimeout(() => wrong.delete().catch(() => { }), 3000);
                     }
                 }
@@ -149,7 +150,7 @@ module.exports = {
                     VIEW_CHANNEL: true
                 });
 
-                await trialChannel.send({ embeds: [new MessageEmbed().setDescription(`✅ <@${message.author.id}>: **${target.user.username}** guessed correctly (${winningNumber}) and has been spared`)] });
+                await trialChannel.send({ embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`✅ <@${message.author.id}>: **${target.user.username}** guessed correctly (${winningNumber}) and has been spared`)] });
 
                 await target.roles.remove(trialRole).catch(() => { });
 
@@ -163,7 +164,7 @@ module.exports = {
                 );
 
                 const outcomeMsg = await trialChannel.send({
-                    embeds: [new MessageEmbed().setDescription(`⚖️ <@${message.author.id}>: **${target.user.username}** failed (answer was ${winningNumber}). choose their fate`)],
+                    embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`⚖️ <@${message.author.id}>: **${target.user.username}** failed (answer was ${winningNumber}). choose their fate`)],
                     components: [optionsRow]
                 });
 
@@ -174,20 +175,20 @@ module.exports = {
                     await btnInteraction.deferUpdate();
 
                     if (btnInteraction.customId === "trial_kick") {
-                        await trialChannel.send({ embeds: [new MessageEmbed().setDescription(`👢 <@${message.author.id}>: **${target.user.username}** has been kicked`)] });
+                        await trialChannel.send({ embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`👢 <@${message.author.id}>: **${target.user.username}** has been kicked`)] });
                         await target.kick("Trial failed").catch(() => { });
                     } else if (btnInteraction.customId === "trial_ban") {
-                        await trialChannel.send({ embeds: [new MessageEmbed().setDescription(`🔨 <@${message.author.id}>: **${target.user.username}** has been banned`)] });
+                        await trialChannel.send({ embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`🔨 <@${message.author.id}>: **${target.user.username}** has been banned`)] });
                         await target.ban({ reason: "Trial failed" }).catch(() => { });
                     } else {
-                        await trialChannel.send({ embeds: [new MessageEmbed().setDescription(`✅ <@${message.author.id}>: **${target.user.username}** has been spared`)] });
+                        await trialChannel.send({ embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`✅ <@${message.author.id}>: **${target.user.username}** has been spared`)] });
                         await target.roles.remove(trialRole).catch(() => { });
                     }
 
                     setTimeout(() => cleanup(trialChannel, message, client), 60000);
 
                 } catch (e) {
-                    await trialChannel.send({ embeds: [new MessageEmbed().setDescription(`⏰ <@${message.author.id}>: timed out. defaulting to spare`)] });
+                    await trialChannel.send({ embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`⏰ <@${message.author.id}>: timed out. defaulting to spare`)] });
                     await target.roles.remove(trialRole).catch(() => { });
                     setTimeout(() => cleanup(trialChannel, message, client), 60000);
                 }

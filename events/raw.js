@@ -1,22 +1,23 @@
 const TempVoice = require("../models/tempVoice");
 const { MessageEmbed } = require("discord.js");
+const config = require("../config.json");
 
 module.exports = {
     name: "raw",
     async execute(packet, ...args) {
-        // The 'raw' event in DJS v13 passes (packet, shardId).
-        // eventHandler.js appends 'client' at the end.
-        // So args contains [shardId, client] (usually).
-        // We retrieve client from the last argument to be safe.
+        
+        
+        
+        
         const client = args[args.length - 1];
 
-        // We only care about INTERACTION_CREATE
+        
         if (packet.t !== "INTERACTION_CREATE") return;
 
         const interaction = packet.d;
 
-        // Ensure it's a Component Interaction
-        // We rely on custom_id to catch our User Select interactions
+        
+        
         if (interaction.type !== 3 || !interaction.data) return;
 
         const customId = interaction.data.custom_id;
@@ -27,11 +28,11 @@ module.exports = {
 
         if (!targetId) return;
 
-        // Basic Info
+        
         const userId = interaction.member ? interaction.member.user.id : interaction.user.id;
         const guildId = interaction.guild_id;
 
-        // Helper to Respond via client.api
+        
         const respond = async (type, data) => {
             try {
                 if (!client.api) {
@@ -57,11 +58,11 @@ module.exports = {
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return;
 
-        // Verify Ownership
+        
         const tempVoice = await TempVoice.findOne({ ownerId: userId });
         if (!tempVoice) {
             return respond(4, {
-                embeds: [new MessageEmbed().setDescription(`❌ <@${userId}>: you don't own a temporary voice channel.`).toJSON()],
+                embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${userId}>: you don't own a temporary voice channel.`).toJSON()],
                 flags: 64
             });
         }
@@ -70,7 +71,7 @@ module.exports = {
         if (!channel) {
             await TempVoice.deleteOne({ ownerId: userId });
             return respond(4, {
-                embeds: [new MessageEmbed().setDescription(`❌ <@${userId}>: your channel no longer exists.`).toJSON()],
+                embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${userId}>: your channel no longer exists.`).toJSON()],
                 flags: 64
             });
         }
@@ -84,18 +85,18 @@ module.exports = {
                 if (member && member.voice.channelId === channel.id) await member.voice.setChannel(null);
 
                 await tempVoice.save();
-                const embed = new MessageEmbed().setDescription(`> 🚫 <@${userId}>: banned <@${targetId}>.`).toJSON();
-                // Type 7 = Update Message (removes dropdown, shows result)
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🚫 <@${userId}>: banned <@${targetId}>.`).toJSON();
+                
                 await respond(7, { embeds: [embed], components: [] });
             }
             else if (action === "kick") {
                 const member = guild.members.cache.get(targetId);
                 if (member && member.voice.channelId === channel.id) {
                     await member.voice.setChannel(null);
-                    const embed = new MessageEmbed().setDescription(`> 👢 <@${userId}>: kicked <@${targetId}>.`).toJSON();
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 👢 <@${userId}>: kicked <@${targetId}>.`).toJSON();
                     await respond(7, { embeds: [embed], components: [] });
                 } else {
-                    const embed = new MessageEmbed().setDescription(`❌ <@${userId}>: user <@${targetId}> is not in the voice channel.`).toJSON();
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${userId}>: user <@${targetId}> is not in the voice channel.`).toJSON();
                     await respond(7, { embeds: [embed], components: [] });
                 }
             }
@@ -103,7 +104,7 @@ module.exports = {
                 await channel.permissionOverwrites.edit(targetId, { CONNECT: true });
                 if (!tempVoice.allowedUsers.includes(targetId)) tempVoice.allowedUsers.push(targetId);
                 await tempVoice.save();
-                const embed = new MessageEmbed().setDescription(`> ➕ <@${userId}>: trusted <@${targetId}>.`).toJSON();
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> ➕ <@${userId}>: trusted <@${targetId}>.`).toJSON();
                 await respond(7, { embeds: [embed], components: [] });
             }
             else if (action === "transfer") {
@@ -112,7 +113,7 @@ module.exports = {
 
                 tempVoice.ownerId = targetId;
                 await tempVoice.save();
-                const embed = new MessageEmbed().setDescription(`> 🔁 <@${userId}>: transferred ownership to <@${targetId}>.`).toJSON();
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔁 <@${userId}>: transferred ownership to <@${targetId}>.`).toJSON();
                 await respond(7, { embeds: [embed], components: [] });
             }
             else if (action === "untrust") {
@@ -120,10 +121,10 @@ module.exports = {
                     await channel.permissionOverwrites.delete(targetId);
                     tempVoice.allowedUsers = tempVoice.allowedUsers.filter(id => id !== targetId);
                     await tempVoice.save();
-                    const embed = new MessageEmbed().setDescription(`> ➖ <@${userId}>: untrusted <@${targetId}>.`).toJSON();
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> ➖ <@${userId}>: untrusted <@${targetId}>.`).toJSON();
                     await respond(7, { embeds: [embed], components: [] });
                 } else {
-                    const embed = new MessageEmbed().setDescription(`❌ <@${userId}>: <@${targetId}> is not trusted.`).toJSON();
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${userId}>: <@${targetId}> is not trusted.`).toJSON();
                     await respond(7, { embeds: [embed], components: [] });
                 }
             }
@@ -132,10 +133,10 @@ module.exports = {
                     await channel.permissionOverwrites.delete(targetId);
                     tempVoice.bannedUsers = tempVoice.bannedUsers.filter(id => id !== targetId);
                     await tempVoice.save();
-                    const embed = new MessageEmbed().setDescription(`> 🕊️ <@${userId}>: unbanned <@${targetId}>.`).toJSON();
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🕊️ <@${userId}>: unbanned <@${targetId}>.`).toJSON();
                     await respond(7, { embeds: [embed], components: [] });
                 } else {
-                    const embed = new MessageEmbed().setDescription(`❌ <@${userId}>: <@${targetId}> is not banned.`).toJSON();
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${userId}>: <@${targetId}> is not banned.`).toJSON();
                     await respond(7, { embeds: [embed], components: [] });
                 }
             }

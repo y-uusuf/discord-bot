@@ -1,11 +1,12 @@
 const { MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
     name: "kick",
     async execute(client, message, args) {
         if (!message.member.permissions.has("KICK_MEMBERS")) {
             const embed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: you are missing **Kick Members** permission(s) to run this command`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are missing **Kick Members** permission(s) to run this command`);
             return message.reply({ embeds: [embed] });
         }
 
@@ -14,7 +15,7 @@ module.exports = {
 
         if (!targetIdOrMention) {
             const embed = new MessageEmbed()
-                .setDescription(`👢 <@${message.author.id}>: kicks a member from the server.\n\n**usage:** \`,kick @user [reason]\`\n**example:** \`,kick @yusuf spamming\``);
+                .setColor(config.embedColor).setDescription(`👢 <@${message.author.id}>: kicks a member from the server.\n\n**usage:** \`,kick @user [reason]\`\n**example:** \`,kick @yusuf spamming\``);
             return message.reply({ embeds: [embed] });
         }
 
@@ -28,20 +29,20 @@ module.exports = {
                 userToKick = await message.guild.members.fetch(targetIdOrMention);
             } catch {
                 const embed = new MessageEmbed()
-                    .setDescription(`❌ <@${message.author.id}>: couldn't find a member with the id **${targetIdOrMention}**`);
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: couldn't find a member with the id **${targetIdOrMention}**`);
                 return message.reply({ embeds: [embed] });
             }
         }
 
         if (!userToKick.kickable) {
             const embed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: i can't kick them, maybe make my role higher?`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: i can't kick them, maybe make my role higher?`);
             return message.reply({ embeds: [embed] });
         }
 
-        // Confirmation embed
+        
         const confirmEmbed = new MessageEmbed()
-            .setDescription(`⚠️ <@${message.author.id}>: are you sure you want to kick **${userToKick.user.tag}**? (reason: ${reason})`);
+            .setColor(config.embedColor).setDescription(`⚠️ <@${message.author.id}>: are you sure you want to kick **${userToKick.user.tag}**? (reason: ${reason})`);
 
         const row = new MessageActionRow()
             .addComponents(
@@ -67,18 +68,18 @@ module.exports = {
                 await interaction.update({ content: "👍", embeds: [], components: [] });
             } else {
                 const cancelEmbed = new MessageEmbed()
-                    .setDescription(`❌ <@${message.author.id}>: ${userToKick.user.tag} was not kicked`);
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: ${userToKick.user.tag} was not kicked`);
                 await interaction.update({ embeds: [cancelEmbed], components: [] });
             }
         } catch (error) {
             if (error.code === "INTERACTION_COLLECTOR_ERROR") {
                 const timeoutEmbed = new MessageEmbed()
-                    .setDescription(`⏰ <@${message.author.id}>: no response received, kick cancelled`);
+                    .setColor(config.embedColor).setDescription(`⏰ <@${message.author.id}>: no response received, kick cancelled`);
                 await confirmMsg.edit({ embeds: [timeoutEmbed], components: [] });
             } else {
                 console.error(error);
                 const embed = new MessageEmbed()
-                    .setDescription(`❌ <@${message.author.id}>: couldn't kick them`);
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: couldn't kick them`);
                 message.reply({ embeds: [embed] });
             }
         }

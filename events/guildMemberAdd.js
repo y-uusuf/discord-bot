@@ -1,4 +1,5 @@
 const { MessageEmbed, WebhookClient } = require("discord.js");
+const config = require("../config.json");
 const Webhook = require("../models/webhook");
 const Settings = require("../models/settings");
 
@@ -7,7 +8,7 @@ module.exports = {
     async execute(member, client) {
 
         const embed = new MessageEmbed()
-            .setAuthor({ name: `/2ks`, iconURL: "https://media3.giphy.com/media/v1.Y2lkPTZjMDliOTUydHJ4aDJpc2dmbW5wamxvOG9xdGk1bGZqa2N5MTN6bTRhOGd0bWg5YyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/JZ3sDHgd48Dao/200.gif" })
+            .setColor(config.embedColor).setAuthor({ name: `/2ks`, iconURL: "https://media3.giphy.com/media/v1.Y2lkPTZjMDliOTUydHJ4aDJpc2dmbW5wamxvOG9xdGk1bGZqa2N5MTN6bTRhOGd0bWg5YyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/JZ3sDHgd48Dao/200.gif" })
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
             .setDescription(`wlc ${member.user.username} to [/2ks.](https://discord.gg/2ks) 🕸`)
             .setFooter({ text: `${member.guild.memberCount} members.` })
@@ -17,7 +18,7 @@ module.exports = {
             const webhookConfig = await Webhook.findOne({ guildId: member.guild.id });
             const settingsConfig = await Settings.findOne({ guildId: member.guild.id });
 
-            // Try webhook first
+            
             if (webhookConfig?.welcome?.id && webhookConfig?.welcome?.token) {
                 const webhook = new WebhookClient({
                     id: webhookConfig.welcome.id,

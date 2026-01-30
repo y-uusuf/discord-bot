@@ -1,5 +1,6 @@
 const Warn = require('../../models/warn.js');
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 
 const JAIL_ROLE_ID = '915677219437830225';
 
@@ -9,33 +10,33 @@ module.exports = {
     try {
       if (!message.guild || !message.member) {
         const embed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: this command can only be used in a server`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: this command can only be used in a server`);
         return message.reply({ embeds: [embed] });
       }
 
       if (!message.member.permissions.has('MODERATE_MEMBERS')) {
         const embed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: you are missing **Moderate Members** permission(s) to run this command`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are missing **Moderate Members** permission(s) to run this command`);
         return message.reply({ embeds: [embed] });
       }
 
       const target = message.mentions.users.first();
       if (!target) {
         const embed = new MessageEmbed()
-          .setDescription(`⚠️ <@${message.author.id}>: warns a member breaking the rules.\n\n**usage:** \`,warn @user <reason>\`\n**example:** \`,warn @yusuf usage of slurs\``);
+          .setColor(config.embedColor).setDescription(`⚠️ <@${message.author.id}>: warns a member breaking the rules.\n\n**usage:** \`,warn @user <reason>\`\n**example:** \`,warn @yusuf usage of slurs\``);
         return message.reply({ embeds: [embed] });
       }
 
       if (target.bot) {
         const embed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: you can't warn bots`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you can't warn bots`);
         return message.reply({ embeds: [embed] });
       }
 
       const reason = args.slice(1).join(' ');
       if (!reason) {
         const embed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: please provide a reason for the warning`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: please provide a reason for the warning`);
         return message.reply({ embeds: [embed] });
       }
 
@@ -67,7 +68,7 @@ module.exports = {
       const totalWarns = warnDoc.warnings.length;
 
       const warnEmbed = new MessageEmbed()
-        .setDescription(`⚠️ <@${message.author.id}>: warned **${target.username}** for \`${reason}\` (total: ${totalWarns})`);
+        .setColor(config.embedColor).setDescription(`⚠️ <@${message.author.id}>: warned **${target.username}** for \`${reason}\` (total: ${totalWarns})`);
 
       await message.channel.send({ embeds: [warnEmbed] });
 
@@ -82,8 +83,8 @@ module.exports = {
 
       if (totalWarns === 2 || totalWarns === 5) {
         const durationMs = totalWarns === 2
-          ? 24 * 60 * 60 * 1000  // 24 hours
-          : 7 * 24 * 60 * 60 * 1000; // 7 days
+          ? 24 * 60 * 60 * 1000  
+          : 7 * 24 * 60 * 60 * 1000; 
 
         const durationStr = totalWarns === 2 ? '24 hours' : '7 days';
 
@@ -94,7 +95,7 @@ module.exports = {
         await guildMember.roles.add(JAIL_ROLE_ID).catch(() => { });
 
         const jailEmbed = new MessageEmbed()
-          .setDescription(`🔒 <@${message.author.id}>: jailed **${target.username}** for ${durationStr} (reached ${totalWarns} warnings)`);
+          .setColor(config.embedColor).setDescription(`🔒 <@${message.author.id}>: jailed **${target.username}** for ${durationStr} (reached ${totalWarns} warnings)`);
 
         await message.channel.send({ embeds: [jailEmbed] });
 
@@ -108,7 +109,7 @@ module.exports = {
             await guildMember.ban({ reason: `Reached 6 warnings.` });
 
             const banEmbed = new MessageEmbed()
-              .setDescription(`🔨 <@${message.author.id}>: banned **${target.tag}** (reached 6 warnings)`);
+              .setColor(config.embedColor).setDescription(`🔨 <@${message.author.id}>: banned **${target.tag}** (reached 6 warnings)`);
 
             await message.channel.send({ embeds: [banEmbed] });
           } catch (err) {
@@ -120,7 +121,7 @@ module.exports = {
     } catch (err) {
       console.error(err);
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: something went wrong`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: something went wrong`);
       message.reply({ embeds: [embed] });
     }
   },

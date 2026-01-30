@@ -1,4 +1,5 @@
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
   name: "disc",
@@ -11,7 +12,7 @@ module.exports = {
       return message.reply("please mention a user, a voice channel, provide an ID, or use `all`.");
     }
 
-    // Disconnect everyone in all voice channels
+    
     if (args[0].toLowerCase() === "all") {
       let disconnected = [];
 
@@ -27,7 +28,7 @@ module.exports = {
       }
 
       const embed = new MessageEmbed()
-        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setColor(config.embedColor).setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setDescription(disconnected.join("\n"))
         .setFooter({ text: `total disconnected: ${disconnected.length} | by ${message.author.tag}` })
         .setTimestamp();
@@ -35,7 +36,7 @@ module.exports = {
       return message.channel.send({ embeds: [embed] });
     }
 
-    // Disconnect everyone in a specific voice channel
+    
     const channel = message.mentions.channels.first() || message.guild.channels.cache.get(args[0]);
     if (channel && channel.type === "GUILD_VOICE") {
       let disconnected = [];
@@ -50,7 +51,7 @@ module.exports = {
       }
 
       const embed = new MessageEmbed()
-        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setColor(config.embedColor).setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setDescription(disconnected.join("\n"))
         .setFooter({ text: `total disconnected: ${disconnected.length} | by ${message.author.tag}` })
         .setTimestamp();
@@ -58,7 +59,7 @@ module.exports = {
       return message.channel.send({ embeds: [embed] });
     }
 
-    // Disconnect a specific user
+    
     const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
 
     if (!target) {
@@ -73,7 +74,7 @@ module.exports = {
       await target.voice.disconnect();
 
       const embed = new MessageEmbed()
-        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setColor(config.embedColor).setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .addFields(
           { name: "```user```", value: `\`${target.user.tag}\``, inline: true },
           { name: "```by```", value: `\`${message.author.tag}\``, inline: true }

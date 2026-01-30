@@ -2,5 +2,6 @@
     "prefix": ",",
     "activityName": "',help' for cmds.",
     "activityType": "STREAMING",
-    "activityStatus": "idle"
+    "activityStatus": "idle",
+    "embedColor": "#131416"
 }

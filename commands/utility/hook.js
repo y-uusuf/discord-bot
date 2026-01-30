@@ -1,4 +1,5 @@
 const { WebhookClient, MessageEmbed, MessageActionRow, MessageButton } = require("discord.js");
+const config = require("../../config.json");
 const Settings = require("../../models/settings");
 
 module.exports = {
@@ -7,30 +8,30 @@ module.exports = {
     async execute(client, message, args) {
         if (!message.member.permissions.has("MANAGE_WEBHOOKS")) {
             const embed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: you are missing **Manage Webhooks** permission(s) to run this command`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are missing **Manage Webhooks** permission(s) to run this command`);
             return message.reply({ embeds: [embed] });
         }
 
         const sub = args[0]?.toLowerCase();
 
-        // --- ADD WEBHOOK ---
+        
         if (sub === "add") {
             const name = args[1];
             const url = args[2];
 
             if (!name || !url) {
                 const embed = new MessageEmbed()
-                    .setDescription(`❌ <@${message.author.id}>: usage: \`,hook add <name> <url>\``);
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: usage: \`,hook add <name> <url>\``);
                 return message.reply({ embeds: [embed] });
             }
             if (!url.startsWith("http")) {
                 const embed = new MessageEmbed()
-                    .setDescription(`❌ <@${message.author.id}>: please provide a valid webhook URL`);
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: please provide a valid webhook URL`);
                 return message.reply({ embeds: [embed] });
             }
             if (["add", "remove", "list"].includes(name.toLowerCase())) {
                 const embed = new MessageEmbed()
-                    .setDescription(`❌ <@${message.author.id}>: that name is reserved`);
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: that name is reserved`);
                 return message.reply({ embeds: [embed] });
             }
 
@@ -41,16 +42,16 @@ module.exports = {
             );
 
             const embed = new MessageEmbed()
-                .setDescription(`🪝 <@${message.author.id}>: saved webhook as **${name.toLowerCase()}**`);
+                .setColor(config.embedColor).setDescription(`🪝 <@${message.author.id}>: saved webhook as **${name.toLowerCase()}**`);
             return message.reply({ embeds: [embed] });
         }
 
-        // --- REMOVE WEBHOOK ---
+        
         if (sub === "remove") {
             const name = args[1];
             if (!name) {
                 const embed = new MessageEmbed()
-                    .setDescription(`❌ <@${message.author.id}>: usage: \`,hook remove <name>\``);
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: usage: \`,hook remove <name>\``);
                 return message.reply({ embeds: [embed] });
             }
 
@@ -61,18 +62,18 @@ module.exports = {
             );
 
             const embed = new MessageEmbed()
-                .setDescription(`🪝 <@${message.author.id}>: removed webhook **${name.toLowerCase()}**`);
+                .setColor(config.embedColor).setDescription(`🪝 <@${message.author.id}>: removed webhook **${name.toLowerCase()}**`);
             return message.reply({ embeds: [embed] });
         }
 
-        // --- LIST WEBHOOKS ---
+        
         if (sub === "list") {
             const settings = await Settings.findOne({ guildId: message.guild.id });
             const webhooks = settings?.savedWebhooks;
 
             if (!webhooks || webhooks.size === 0) {
                 const embed = new MessageEmbed()
-                    .setDescription(`📋 <@${message.author.id}>: no saved webhooks`);
+                    .setColor(config.embedColor).setDescription(`📋 <@${message.author.id}>: no saved webhooks`);
                 return message.reply({ embeds: [embed] });
             }
 
@@ -80,12 +81,12 @@ module.exports = {
             const list = keys.map(k => `\`${k}\``).join(", ");
 
             const embed = new MessageEmbed()
-                .setDescription(`📋 <@${message.author.id}>: saved webhooks: ${list}`);
+                .setColor(config.embedColor).setDescription(`📋 <@${message.author.id}>: saved webhooks: ${list}`);
 
             return message.reply({ embeds: [embed] });
         }
 
-        // --- SEND MESSAGE ---
+        
         let url = args[0];
         let content = args.slice(1).join(" ");
         let usedSaved = false;
@@ -100,7 +101,7 @@ module.exports = {
 
         if (!url || !content || (!url.startsWith("http") && !usedSaved)) {
             const embed = new MessageEmbed()
-                .setDescription(`🪝 <@${message.author.id}>: send messages via webhook.\n\n**usage:** \`,hook <url/name> <message>\`\n**manage:** \`,hook add/remove/list\``);
+                .setColor(config.embedColor).setDescription(`🪝 <@${message.author.id}>: send messages via webhook.\n\n**usage:** \`,hook <url/name> <message>\`\n**manage:** \`,hook add/remove/list\``);
             return message.reply({ embeds: [embed] });
         }
 
@@ -110,7 +111,7 @@ module.exports = {
         );
 
         const prompt = await message.reply({
-            embeds: [new MessageEmbed().setDescription(`🪝 <@${message.author.id}>: how should this message be sent?`)],
+            embeds: [new MessageEmbed().setColor(config.embedColor).setDescription(`🪝 <@${message.author.id}>: how should this message be sent?`)],
             components: [row]
         });
 
@@ -135,7 +136,7 @@ module.exports = {
             };
 
             if (interaction.customId === "hook_embed") {
-                const embed = new MessageEmbed().setDescription(content);
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(content);
                 payload.embeds = [embed];
             } else {
                 payload.content = content;
@@ -145,7 +146,7 @@ module.exports = {
         } catch (e) {
             console.error(e);
             const errEmbed = new MessageEmbed()
-                .setDescription(`❌ <@${message.author.id}>: invalid webhook URL or missing permissions`);
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: invalid webhook URL or missing permissions`);
             message.channel.send({ embeds: [errEmbed] }).then(m => setTimeout(() => m.delete(), 5000));
         }
     }

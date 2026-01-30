@@ -1,4 +1,5 @@
 const { MessageEmbed } = require('discord.js');
+const config = require("../../config.json");
 
 module.exports = {
   name: 'status',
@@ -17,26 +18,26 @@ module.exports = {
 
     if (!user.presence || !user.presence.activities.length) {
       const embed = new MessageEmbed()
-        .setDescription(`📊 <@${message.author.id}>: **${user.user.username}** has no status or activity`);
+        .setColor(config.embedColor).setDescription(`📊 <@${message.author.id}>: **${user.user.username}** has no status or activity`);
       return message.channel.send({ embeds: [embed] });
     }
 
     user.presence.activities.forEach((activity) => {
-      // Custom status (type 4)
+      
       if (activity.type === 'CUSTOM' || activity.type === 4) {
         const embed = new MessageEmbed()
-          .setDescription(`📊 <@${message.author.id}>: **${user.user.username}**'s status: ${activity.emoji?.name || ''} ${activity.state || 'no text'}`);
+          .setColor(config.embedColor).setDescription(`📊 <@${message.author.id}>: **${user.user.username}**'s status: ${activity.emoji?.name || ''} ${activity.state || 'no text'}`);
         message.channel.send({ embeds: [embed] });
       }
 
-      // Playing (type 0)
+      
       if (activity.type === 'PLAYING' || activity.type === 0) {
         const embed = new MessageEmbed()
-          .setDescription(`🎮 <@${message.author.id}>: **${user.user.username}** is playing **${activity.name}**${activity.details ? ` - ${activity.details}` : ''}`);
+          .setColor(config.embedColor).setDescription(`🎮 <@${message.author.id}>: **${user.user.username}** is playing **${activity.name}**${activity.details ? ` - ${activity.details}` : ''}`);
         message.channel.send({ embeds: [embed] });
       }
 
-      // Spotify detection
+      
       const isSpotify = (activity.type === 'LISTENING' || activity.type === 2) &&
         (activity.name === 'Spotify' || activity.name?.toLowerCase().includes('spotify'));
 
@@ -44,28 +45,28 @@ module.exports = {
         const trackName = activity.details || 'Unknown';
         const trackAuthor = (activity.state || 'Unknown').replace(/;/g, ',');
         const embed = new MessageEmbed()
-          .setDescription(`🎵 <@${message.author.id}>: **${user.user.username}** is listening to **${trackName}** by ${trackAuthor}`);
+          .setColor(config.embedColor).setDescription(`🎵 <@${message.author.id}>: **${user.user.username}** is listening to **${trackName}** by ${trackAuthor}`);
         message.channel.send({ embeds: [embed] });
       }
 
-      // Streaming (type 1)
+      
       if (activity.type === 'STREAMING' || activity.type === 1) {
         const embed = new MessageEmbed()
-          .setDescription(`📺 <@${message.author.id}>: **${user.user.username}** is streaming **${activity.details || activity.name}**`);
+          .setColor(config.embedColor).setDescription(`📺 <@${message.author.id}>: **${user.user.username}** is streaming **${activity.details || activity.name}**`);
         message.channel.send({ embeds: [embed] });
       }
 
-      // Watching (type 3)
+      
       if (activity.type === 'WATCHING' || activity.type === 3) {
         const embed = new MessageEmbed()
-          .setDescription(`👀 <@${message.author.id}>: **${user.user.username}** is watching **${activity.name}**`);
+          .setColor(config.embedColor).setDescription(`👀 <@${message.author.id}>: **${user.user.username}** is watching **${activity.name}**`);
         message.channel.send({ embeds: [embed] });
       }
 
-      // Competing (type 5)
+      
       if (activity.type === 'COMPETING' || activity.type === 5) {
         const embed = new MessageEmbed()
-          .setDescription(`🏆 <@${message.author.id}>: **${user.user.username}** is competing in **${activity.name}**`);
+          .setColor(config.embedColor).setDescription(`🏆 <@${message.author.id}>: **${user.user.username}** is competing in **${activity.name}**`);
         message.channel.send({ embeds: [embed] });
       }
     });

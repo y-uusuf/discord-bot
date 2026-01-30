@@ -1,17 +1,18 @@
 const { MessageEmbed } = require("discord.js");
+const config = require("../../config.json");
 
 module.exports = {
   name: "deafen",
   async execute(client, message, args) {
     if (!message.member.permissions.has("DEAFEN_MEMBERS")) {
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: you are missing **Deafen Members** permission(s) to run this command`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you are missing **Deafen Members** permission(s) to run this command`);
       return message.reply({ embeds: [embed] });
     }
 
     if (!args[0]) {
       const embed = new MessageEmbed()
-        .setDescription(`🔇 <@${message.author.id}>: please mention a user, provide their ID, or use \`all\``);
+        .setColor(config.embedColor).setDescription(`🔇 <@${message.author.id}>: please mention a user, provide their ID, or use \`all\``);
       return message.reply({ embeds: [embed] });
     }
 
@@ -27,47 +28,47 @@ module.exports = {
 
       if (deafened.length === 0) {
         const embed = new MessageEmbed()
-          .setDescription(`❌ <@${message.author.id}>: no one is in a voice channel or everyone is already deafened`);
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: no one is in a voice channel or everyone is already deafened`);
         return message.reply({ embeds: [embed] });
       }
 
       const embed = new MessageEmbed()
-        .setDescription(`🔇 <@${message.author.id}>: deafened **${deafened.length}** member(s)`);
+        .setColor(config.embedColor).setDescription(`🔇 <@${message.author.id}>: deafened **${deafened.length}** member(s)`);
 
       return message.channel.send({ embeds: [embed] });
     }
 
-    // Single user deafen
+    
     const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
 
     if (!target) {
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: please mention a valid user or provide their ID`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: please mention a valid user or provide their ID`);
       return message.reply({ embeds: [embed] });
     }
 
     if (!target.voice.channel) {
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: that user is not in a voice channel`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: that user is not in a voice channel`);
       return message.reply({ embeds: [embed] });
     }
 
     if (target.voice.serverDeaf) {
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: that user is already server deafened`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: that user is already server deafened`);
       return message.reply({ embeds: [embed] });
     }
 
     try {
       await target.voice.setDeaf(true);
       const embed = new MessageEmbed()
-        .setDescription(`🔇 <@${message.author.id}>: deafened **${target.user.username}**`);
+        .setColor(config.embedColor).setDescription(`🔇 <@${message.author.id}>: deafened **${target.user.username}**`);
 
       return message.channel.send({ embeds: [embed] });
     } catch (error) {
       console.error(error);
       const embed = new MessageEmbed()
-        .setDescription(`❌ <@${message.author.id}>: couldn't deafen that user`);
+        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: couldn't deafen that user`);
       return message.reply({ embeds: [embed] });
     }
   },
