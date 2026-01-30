@@ -440,7 +440,7 @@ client.on("messageCreate", async (message) => {
   if (afkUser) {
     await AFK.deleteOne({ userID: message.author.id });
     const afkEmbed = new MessageEmbed()
-      .setColor(config.embedColor).setDescription(`**${message.author.username}**, welcome back! I removed your AFK status.`);
+      .setColor(config.embedColor).setDescription(`> 💤 **${message.author}**: welcome back! I removed your AFK status.`);
     message.channel.send({ embeds: [afkEmbed] });
   }
 
