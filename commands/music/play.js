@@ -193,67 +193,76 @@ async function getSongInfoViaYtDlp(url) {
 async function streamViaYtDlp(url, volumePercent) {
     const cookieFile = getCookieFilePathFromEnv();
 
-    const spawn = (format) =>
-        ytDlpExec.exec(url, {
-            output: "-",
-            format,
-            noPlaylist: true,
-            quiet: true,
-            noWarnings: true,
-            userAgent:
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            ...(cookieFile ? { cookies: cookieFile } : {}),
-        });
-
-    // Try a slightly “Discord-friendly” choice first, but WITHOUT filters
-    let child = spawn("bestaudio/best");
-
-    const pass = new PassThrough({ highWaterMark: 2 << 20 }); // 2MB buffer
-    child.stdout.pipe(pass);
-
-    // If yt-dlp instantly errors, retry once with the simplest possible format
-    const fatalPromise = new Promise((_, reject) => {
-        child.stderr.on("data", (d) => {
-            const msg = d.toString();
-            if (msg.includes("Requested format is not available")) {
-                reject(new Error(msg.trim()));
-            }
-            if (msg.includes("Sign in to confirm")) {
-                reject(new Error(msg.trim()));
-            }
-        });
-        child.on("error", reject);
+    // Force Discord-friendly audio (Opus in WebM). If not available, we FAIL so caller falls back to play-dl.
+    const child = ytDlpExec.exec(url, {
+        output: "-",
+        // ✅ Only formats that Discord voice handles smoothly (no transcoding)
+        // 1) Opus/WebM (ideal)
+        // 2) Any WebM audio (usually Opus; avoids AAC/M4A silent issue)
+        format: "bestaudio[acodec=opus][ext=webm]/bestaudio[ext=webm]",
+        noPlaylist: true,
+        quiet: true,
+        noWarnings: true,
+        // helps on some cloud IPs
+        userAgent:
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        ...(cookieFile ? { cookies: cookieFile } : {}),
     });
 
-    // demuxProbe can hang if the stream dies early -> race it
+    // Buffer the pipe to reduce micro-stutter
+    const pass = new PassThrough({ highWaterMark: 2 << 20 }); // 2MB
+    child.stdout.pipe(pass);
+
+    // If yt-dlp errors, kill the stream so the player goes Idle and your code can fallback to play-dl
+    child.stderr.on("data", (d) => {
+        const msg = d.toString().trim();
+        if (!msg) return;
+
+        // Log useful errors
+        if (msg.startsWith("ERROR:") || msg.includes("[youtube]")) {
+            console.log("yt-dlp:", msg);
+        }
+
+        // Fatal: no suitable (webm/opus) format or blocked
+        if (
+            msg.includes("Requested format is not available") ||
+            msg.includes("Sign in to confirm")
+        ) {
+            pass.destroy(new Error("yt-dlp fatal: " + msg));
+        }
+    });
+
+    child.on("error", (err) => {
+        console.error("yt-dlp process error:", err.message || err);
+        pass.destroy(err);
+    });
+
+    // Probe container/codec so discord.js voice uses the correct inputType
     let probed;
     try {
-        probed = await Promise.race([demuxProbe(pass), fatalPromise]);
-    } catch (e) {
-        // retry with safest possible
-        try {
-            child.kill?.("SIGKILL");
-        } catch { }
-
-        child = spawn("best");
-        const pass2 = new PassThrough({ highWaterMark: 2 << 20 });
-        child.stdout.pipe(pass2);
-
-        probed = await demuxProbe(pass2); // if this fails too, outer caller will fall back to play-dl
+        probed = await demuxProbe(pass);
+    } catch (err) {
+        // Ensure process is stopped if probe fails
+        try { child.kill?.("SIGKILL"); } catch { }
+        throw err;
     }
 
     const { stream, type } = probed;
+
+    // (Optional) quick debug - keep until it’s stable
+    // console.log("[probe] inputType =", type);
 
     const resource = createAudioResource(stream, {
         inputType: type,
         inlineVolume: true,
     });
 
-    const capped = clampVolume(volumePercent, 25); // lower for stability
+    const capped = clampVolume(volumePercent, 25); // lower = more stable/headroom
     resource.volume?.setVolume(capped / 100);
 
     return { resource, child };
 }
+
 
 
 // ---- Core playback ----
