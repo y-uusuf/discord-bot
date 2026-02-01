@@ -65,27 +65,30 @@ function netscapeToCookieHeader(netscapeText) {
 function getCookieFilePathFromEnv() {
     if (cachedCookieFilePath) return cachedCookieFilePath;
 
-    // Priority 1: base64 netscape cookie file
-    if (process.env.YOUTUBE_COOKIES_B64 && process.env.YOUTUBE_COOKIES_B64.trim()) {
+    const b64 =
+        process.env.YOUTUBE_COOKIES_B64 ||
+        process.env.YOUTUBE_COOKIES_B65; // fallback support
+
+    if (b64 && b64.trim()) {
         try {
-            const buf = Buffer.from(process.env.YOUTUBE_COOKIES_B64.trim(), "base64");
+            const buf = Buffer.from(b64.trim(), "base64");
             const tmpPath = path.join(os.tmpdir(), `youtube-cookies-${process.pid}.txt`);
             fs.writeFileSync(tmpPath, buf);
             cachedCookieFilePath = tmpPath;
             return cachedCookieFilePath;
-        } catch (_) {
-            // fallthrough
+        } catch (err) {
+            console.error("Invalid base64 YouTube cookies:", err.message);
         }
     }
 
-    // Priority 2: explicit file path
-    if (process.env.YOUTUBE_COOKIES_PATH && process.env.YOUTUBE_COOKIES_PATH.trim()) {
+    if (process.env.YOUTUBE_COOKIES_PATH?.trim()) {
         cachedCookieFilePath = process.env.YOUTUBE_COOKIES_PATH.trim();
         return cachedCookieFilePath;
     }
 
     return null;
 }
+
 
 function getCookieHeaderFromEnv() {
     if (cachedCookieHeader) return cachedCookieHeader;
