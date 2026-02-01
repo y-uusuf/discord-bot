@@ -1,12 +1,32 @@
 const { MessageEmbed, MessageActionRow, MessageSelectMenu } = require("discord.js");
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, StreamType } = require("@discordjs/voice");
 const play = require("play-dl");
-const { spawn } = require("child_process"); // kept (do not remove features)
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
 const config = require("../../config.json");
 const MusicSession = require("../../models/musicSession");
+
+// Initialize play-dl with cookies from env if available
+(async () => {
+    try {
+        if (process.env.YOUTUBE_COOKIES) {
+            let cookieString = process.env.YOUTUBE_COOKIES;
+
+            // Check if it's JSON format and convert to string format
+            if (cookieString.trim().startsWith('[')) {
+                const cookies = JSON.parse(cookieString);
+                cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+            }
+
+            await play.setToken({
+                youtube: {
+                    cookie: cookieString
+                }
+            });
+            console.log("YouTube cookies loaded from env!");
+        }
+    } catch (err) {
+        console.log("Failed to load YouTube cookies:", err.message);
+    }
+})();
 
 // Store active players, connections, audio resources, and idle timeouts
 const players = new Map();
@@ -129,31 +149,11 @@ async function playSong(guildId, client) {
     console.log("Playing song:", song.title, "-", song.url);
 
     try {
-        // Use yt-dlp-exec to get audio stream (streams directly, no files saved)
-        const ytDlpExec = require("yt-dlp-exec");
+        // Use play-dl to stream (has better YouTube handling)
+        const source = await play.stream(song.url, { quality: 2 });
 
-        const cookieFilePath = getCookieFilePathFromEnv();
-
-        const ytdlpOptions = {
-            output: "-",
-            format: "worstaudio[abr<=128]/worstaudio/bestaudio[abr<=128]/bestaudio",
-            noPlaylist: true,
-            quiet: true,
-        };
-
-        // If cookies exist, pass them to yt-dlp
-        if (cookieFilePath) {
-            ytdlpOptions.cookies = cookieFilePath;
-        }
-
-        const ytdlpProcess = ytDlpExec.exec(song.url, ytdlpOptions);
-
-        ytdlpProcess.stderr.on("data", (data) => {
-            console.log("yt-dlp stderr:", data.toString());
-        });
-
-        const resource = createAudioResource(ytdlpProcess.stdout, {
-            inputType: StreamType.Arbitrary,
+        const resource = createAudioResource(source.stream, {
+            inputType: source.type,
             inlineVolume: true
         });
         resource.volume?.setVolume(session.volume / 100);
@@ -164,12 +164,8 @@ async function playSong(guildId, client) {
         const player = players.get(guildId);
         if (player) {
             player.play(resource);
-            console.log("Started playing with yt-dlp!");
+            console.log("Started playing!");
         }
-
-        ytdlpProcess.on("error", (err) => {
-            console.error("yt-dlp process error:", err);
-        });
 
     } catch (err) {
         console.error("Error playing song:", err.message || err);
@@ -286,6 +282,9 @@ module.exports = {
                 const selectedIndex = parseInt(collected.values[0]);
                 const selected = results[selectedIndex];
 
+                // Immediately acknowledge the interaction to prevent timeout
+                await collected.deferUpdate();
+
                 // Get the video URL - play-dl uses 'url' property
                 const videoUrl = selected.url || `https://www.youtube.com/watch?v=${selected.id}`;
                 console.log("Selected video URL:", videoUrl);
@@ -300,7 +299,6 @@ module.exports = {
 
                 console.log("Song info:", songInfo);
 
-                await collected.deferUpdate();
                 await searchMsg.delete().catch(() => { });
             }
 
