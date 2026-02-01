@@ -191,17 +191,13 @@ async function streamViaYtDlp(url, volumePercent) {
     // Extra stability on cloud hosts
     const child = ytDlpExec.exec(url, {
         output: "-",
-        // Prefer opus in webm (best for Discord)
-        format: "bestaudio[ext=webm][acodec=opus]/bestaudio",
+        format: "bestaudio[acodec=opus]/bestaudio[ext=webm]/bestaudio",
         noPlaylist: true,
         quiet: true,
         noWarnings: true,
-
-        // Helps some cloud IP blocks:
         userAgent:
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-
-        ...(cookieFile ? { cookies: cookieFile } : {}),
+        ...(cookieFile ? { cookies: cookieFile } : {})
     });
 
     // buffer the pipe to reduce micro-stutter
