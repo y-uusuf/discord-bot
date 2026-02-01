@@ -1,9 +1,32 @@
 const { MessageEmbed, MessageActionRow, MessageSelectMenu } = require("discord.js");
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, StreamType } = require("@discordjs/voice");
 const play = require("play-dl");
-const { spawn } = require("child_process");
 const config = require("../../config.json");
 const MusicSession = require("../../models/musicSession");
+
+// Initialize play-dl with cookies from env if available
+(async () => {
+    try {
+        if (process.env.YOUTUBE_COOKIES) {
+            let cookieString = process.env.YOUTUBE_COOKIES;
+
+            // Check if it's JSON format and convert to string format
+            if (cookieString.trim().startsWith('[')) {
+                const cookies = JSON.parse(cookieString);
+                cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+            }
+
+            await play.setToken({
+                youtube: {
+                    cookie: cookieString
+                }
+            });
+            console.log("YouTube cookies loaded from env!");
+        }
+    } catch (err) {
+        console.log("Failed to load YouTube cookies:", err.message);
+    }
+})();
 
 // Store active players, connections, audio resources, and idle timeouts
 const players = new Map();
