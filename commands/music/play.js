@@ -1,7 +1,4 @@
 const { MessageEmbed, MessageActionRow, MessageSelectMenu } = require("discord.js");
-const { demuxProbe } = require("@discordjs/voice");
-const { PassThrough } = require("stream");
-
 const {
     joinVoiceChannel,
     createAudioPlayer,
@@ -9,8 +6,9 @@ const {
     AudioPlayerStatus,
     VoiceConnectionStatus,
     entersState,
-    StreamType
+    demuxProbe,
 } = require("@discordjs/voice");
+const { PassThrough } = require("stream");
 
 const play = require("play-dl");
 const config = require("../../config.json");
@@ -19,22 +17,27 @@ const MusicSession = require("../../models/musicSession");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-
 const ytDlpExec = require("yt-dlp-exec");
 
+// =================== helpers ===================
 function clampVolume(requested, cap = 35) {
-    const v = Number.isFinite(requested) ? requested : 100;
+    const n = Number(requested);
+    const v = Number.isFinite(n) ? n : 100;
     return Math.max(1, Math.min(cap, v));
 }
 
+function safeB64(str) {
+    // Render env vars can include newlines/spaces; base64 must be one continuous string
+    return String(str || "").replace(/\s+/g, "").trim();
+}
 
 // Store active players, connections, audio resources, and idle timeouts
 const players = new Map();
 const connections = new Map();
-const resources = new Map();     // For dynamic volume control
-const idleTimeouts = new Map();  // For auto-disconnect after 1 minute
+const resources = new Map();
+const idleTimeouts = new Map();
 
-// ---- Cookie helpers (supports cloud-safe one-line env) ----
+// ---- Cookie helpers ----
 let cachedCookieFilePath = null;
 let cachedCookieHeader = null;
 
@@ -46,11 +49,9 @@ function netscapeToCookieHeader(netscapeText) {
         if (!line || line.startsWith("#")) continue;
         const parts = line.split("\t");
         if (parts.length < 7) continue;
-
         const name = parts[5];
         const value = parts[6];
         if (!name || typeof value === "undefined") continue;
-
         pairs.push([name, value]);
     }
 
@@ -65,13 +66,13 @@ function netscapeToCookieHeader(netscapeText) {
 function getCookieFilePathFromEnv() {
     if (cachedCookieFilePath) return cachedCookieFilePath;
 
-    const b64 =
-        process.env.YOUTUBE_COOKIES_B64 ||
-        process.env.YOUTUBE_COOKIES_B65; // fallback support
+    const rawB64 = process.env.YOUTUBE_COOKIES_B64 || process.env.YOUTUBE_COOKIES_B65; // allow your typo env name
+    const b64 = safeB64(rawB64);
 
-    if (b64 && b64.trim()) {
+    // Priority 1: base64 netscape cookie file
+    if (b64) {
         try {
-            const buf = Buffer.from(b64.trim(), "base64");
+            const buf = Buffer.from(b64, "base64");
             const tmpPath = path.join(os.tmpdir(), `youtube-cookies-${process.pid}.txt`);
             fs.writeFileSync(tmpPath, buf);
             cachedCookieFilePath = tmpPath;
@@ -81,14 +82,14 @@ function getCookieFilePathFromEnv() {
         }
     }
 
-    if (process.env.YOUTUBE_COOKIES_PATH?.trim()) {
+    // Priority 2: explicit file path
+    if (process.env.YOUTUBE_COOKIES_PATH && process.env.YOUTUBE_COOKIES_PATH.trim()) {
         cachedCookieFilePath = process.env.YOUTUBE_COOKIES_PATH.trim();
         return cachedCookieFilePath;
     }
 
     return null;
 }
-
 
 function getCookieHeaderFromEnv() {
     if (cachedCookieHeader) return cachedCookieHeader;
@@ -106,7 +107,8 @@ function getCookieHeaderFromEnv() {
             const text = fs.readFileSync(cookieFile, "utf8");
             cachedCookieHeader = netscapeToCookieHeader(text);
             return cachedCookieHeader;
-        } catch (_) {
+        } catch (err) {
+            console.error("Failed to read cookie file:", err.message);
             return null;
         }
     }
@@ -114,25 +116,46 @@ function getCookieHeaderFromEnv() {
     return null;
 }
 
+function debugCookieFileOnce() {
+    const cookieFile = getCookieFilePathFromEnv();
+    if (!cookieFile) {
+        console.log("[cookies] No cookie file found from env.");
+        return;
+    }
+
+    try {
+        const stat = fs.statSync(cookieFile);
+        const firstLine = fs.readFileSync(cookieFile, "utf8").split(/\r?\n/)[0] || "";
+        console.log(`[cookies] cookieFile=${cookieFile} size=${stat.size} firstLine="${firstLine}"`);
+
+        // Netscape cookie file should start with one of these comments
+        if (!firstLine.includes("Netscape") && !firstLine.includes("HTTP Cookie File") && !firstLine.startsWith("#")) {
+            console.log("[cookies] WARNING: Cookie file header looks unusual. Ensure Netscape format.");
+        }
+    } catch (e) {
+        console.log("[cookies] Could not stat/read cookie file:", e.message);
+    }
+}
+
 // Initialize play-dl with cookies if available
 (async () => {
     try {
+        debugCookieFileOnce();
+
         const cookieHeader = getCookieHeaderFromEnv();
         if (cookieHeader) {
-            await play.setToken({
-                youtube: { cookie: cookieHeader }
-            });
+            await play.setToken({ youtube: { cookie: cookieHeader } });
             console.log("YouTube cookies loaded for play-dl");
+        } else {
+            console.log("No YouTube cookies header available for play-dl.");
         }
     } catch (err) {
         console.log("Failed to load YouTube cookies:", err.message);
     }
 })();
 
-// ---- yt-dlp helpers (fallback) ----
+// ---- yt-dlp helpers ----
 async function getSongInfoViaYtDlp(url) {
-    // -J prints JSON metadata
-    // Use a more bot-resistant client + cookies if available
     const cookieFile = getCookieFilePathFromEnv();
 
     const args = {
@@ -140,8 +163,6 @@ async function getSongInfoViaYtDlp(url) {
         noPlaylist: true,
         skipDownload: true,
         quiet: true,
-        // more resistant extractor args (helps on cloud IPs)
-        extractorArgs: "youtube:player_client=android,player_skip=webpage,configs",
     };
 
     if (cookieFile) args.cookies = cookieFile;
@@ -150,57 +171,61 @@ async function getSongInfoViaYtDlp(url) {
     const title = json?.title || "Unknown";
     const channel = json?.uploader || json?.channel || "Unknown";
     const durationSec = json?.duration;
-    const duration = typeof durationSec === "number"
-        ? `${Math.floor(durationSec / 60)}:${String(durationSec % 60).padStart(2, "0")}`
-        : "?:??";
 
-    const thumbnail = Array.isArray(json?.thumbnails) && json.thumbnails.length
-        ? (json.thumbnails[json.thumbnails.length - 1]?.url || null)
-        : (json?.thumbnail || null);
+    const duration =
+        typeof durationSec === "number"
+            ? `${Math.floor(durationSec / 60)}:${String(durationSec % 60).padStart(2, "0")}`
+            : "?:??";
 
-    return {
-        title,
-        url,
-        duration,
-        thumbnail,
-        channel
-    };
+    const thumbnail =
+        Array.isArray(json?.thumbnails) && json.thumbnails.length
+            ? json.thumbnails[json.thumbnails.length - 1]?.url || null
+            : json?.thumbnail || null;
+
+    return { title, url, duration, thumbnail, channel };
 }
 
 async function streamViaYtDlp(url, volumePercent) {
     const cookieFile = getCookieFilePathFromEnv();
 
+    // Extra stability on cloud hosts
     const child = ytDlpExec.exec(url, {
         output: "-",
-        // Prefer opus-in-webm (best for Discord)
+        // Prefer opus in webm (best for Discord)
         format: "bestaudio[ext=webm][acodec=opus]/bestaudio",
         noPlaylist: true,
         quiet: true,
         noWarnings: true,
-        ...(cookieFile ? { cookies: cookieFile } : {})
+
+        // Helps some cloud IP blocks:
+        userAgent:
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+
+        ...(cookieFile ? { cookies: cookieFile } : {}),
     });
 
-    // Buffering: helps prevent tiny hiccups from becoming audible
-    const pass = new PassThrough({ highWaterMark: 1 << 20 }); // 1MB buffer
+    // buffer the pipe to reduce micro-stutter
+    const pass = new PassThrough({ highWaterMark: 1 << 20 });
     child.stdout.pipe(pass);
 
-    // Probe container/codec so discord.js voice uses the correct type
+    // demux probe for correct inputType
     const { stream, type } = await demuxProbe(pass);
 
     const resource = createAudioResource(stream, {
         inputType: type,
-        inlineVolume: true
+        inlineVolume: true,
     });
 
-    // Cap + set volume
-    const capped = clampVolume(volumePercent, 35); // cap at 35%
+    const capped = clampVolume(volumePercent, 35);
     resource.volume?.setVolume(capped / 100);
 
     child.stderr.on("data", (d) => {
         const msg = d.toString().trim();
         if (!msg) return;
         console.log("yt-dlp:", msg);
-        if (msg.includes("ERROR")) {
+
+        // If youtube blocks, kill the stream so player goes idle and fallback can happen
+        if (msg.includes("Sign in to confirm") || msg.includes("ERROR")) {
             pass.destroy(new Error("yt-dlp: " + msg));
         }
     });
@@ -212,7 +237,6 @@ async function streamViaYtDlp(url, volumePercent) {
 
     return { resource, child };
 }
-
 
 // ---- Core playback ----
 async function playSong(guildId, client) {
@@ -229,14 +253,11 @@ async function playSong(guildId, client) {
     }
 
     const volume = clampVolume(session.volume || 100);
-
     console.log("Playing song:", song.title, "-", song.url);
 
     try {
         let resource;
 
-        // Try yt-dlp first — it reliably streams audio on this setup.
-        // Fall back to play-dl only if yt-dlp itself fails.
         try {
             const fallback = await streamViaYtDlp(song.url, volume);
             resource = fallback.resource;
@@ -245,12 +266,11 @@ async function playSong(guildId, client) {
             const source = await play.stream(song.url, { quality: 2 });
             resource = createAudioResource(source.stream, {
                 inputType: source.type,
-                inlineVolume: true
+                inlineVolume: true,
             });
             resource.volume?.setVolume(volume / 100);
         }
 
-        // Store resource for dynamic volume control
         resources.set(guildId, resource);
 
         const player = players.get(guildId);
@@ -258,7 +278,6 @@ async function playSong(guildId, client) {
             player.play(resource);
             console.log("Started playing!");
         }
-
     } catch (err) {
         console.error("Error playing song:", err.message || err);
 
@@ -275,7 +294,6 @@ async function playSong(guildId, client) {
     }
 }
 
-// Function to update volume dynamically
 function setVolume(guildId, volume) {
     const resource = resources.get(guildId);
     if (resource && resource.volume) {
@@ -286,17 +304,18 @@ function setVolume(guildId, volume) {
     return false;
 }
 
-
 module.exports = {
     name: "play",
     description: "Play music from YouTube",
     aliases: ["p"],
+
     players,
     connections,
     resources,
     idleTimeouts,
     playSong,
     setVolume,
+
     async execute(client, message, args) {
         if (!message.member.voice.channel) {
             const embed = new MessageEmbed()
@@ -308,7 +327,7 @@ module.exports = {
         const voiceChannel = message.member.voice.channel;
         const existingSession = await MusicSession.findOne({ guildId: message.guild.id });
 
-        // Check if bot is already in use by someone else
+        // ownership lock
         if (existingSession && existingSession.ownerId !== message.author.id) {
             const isAdmin = message.member.permissions.has("ADMINISTRATOR");
             if (!isAdmin) {
@@ -333,7 +352,6 @@ module.exports = {
             let songInfo;
 
             if (isUrl) {
-                // Direct URL: try play-dl info, fallback to yt-dlp info
                 try {
                     const info = await play.video_info(query);
                     songInfo = {
@@ -341,14 +359,13 @@ module.exports = {
                         url: `https://www.youtube.com/watch?v=${info.video_details.videoId}`,
                         duration: info.video_details.durationRaw,
                         thumbnail: info.video_details.thumbnails[0]?.url,
-                        channel: info.video_details.channel?.name || "Unknown"
+                        channel: info.video_details.channel?.name || "Unknown",
                     };
                 } catch (e) {
                     console.log("play-dl video_info failed, falling back to yt-dlp:", e?.message || e);
                     songInfo = await getSongInfoViaYtDlp(query);
                 }
             } else {
-                // Search YouTube
                 const searchEmbed = new MessageEmbed()
                     .setColor(config.embedColor)
                     .setDescription(`> 🔍 <@${message.author.id}>: searching for **${query}**...`);
@@ -366,7 +383,7 @@ module.exports = {
                 const options = results.map((video, index) => ({
                     label: (video.title || "Unknown").substring(0, 100),
                     description: `${video.channel?.name || "Unknown"} • ${video.durationRaw || "?:??"}`.substring(0, 100),
-                    value: index.toString()
+                    value: index.toString(),
                 }));
 
                 const row = new MessageActionRow().addComponents(
@@ -382,7 +399,7 @@ module.exports = {
 
                 await searchMsg.edit({ embeds: [selectEmbed], components: [row] });
 
-                const filter = i => i.customId === "music_select" && i.user.id === message.author.id;
+                const filter = (i) => i.customId === "music_select" && i.user.id === message.author.id;
                 const collected = await searchMsg.awaitMessageComponent({ filter, time: 30000 }).catch(() => null);
 
                 if (!collected) {
@@ -404,7 +421,7 @@ module.exports = {
                     url: videoUrl,
                     duration: selected.durationRaw || "?:??",
                     thumbnail: selected.thumbnails?.[0]?.url || null,
-                    channel: selected.channel?.name || "Unknown"
+                    channel: selected.channel?.name || "Unknown",
                 };
 
                 await searchMsg.delete().catch(() => { });
@@ -418,7 +435,7 @@ module.exports = {
                     guildId: message.guild.id,
                     adapterCreator: message.guild.voiceAdapterCreator,
                     selfDeaf: true,
-                    selfMute: false
+                    selfMute: false,
                 });
 
                 connections.set(message.guild.id, connection);
@@ -440,8 +457,8 @@ module.exports = {
                 const player = createAudioPlayer({
                     behaviors: {
                         noSubscriber: "pause",
-                        maxMissedFrames: Math.round(5000 / 20)
-                    }
+                        maxMissedFrames: Math.round(5000 / 20),
+                    },
                 });
 
                 players.set(message.guild.id, player);
@@ -449,52 +466,53 @@ module.exports = {
 
                 player.on("stateChange", async (oldState, newState) => {
                     console.log(`Player state: ${oldState.status} -> ${newState.status}`);
-
                     if (newState.status !== AudioPlayerStatus.Idle) return;
 
-                    const session = await MusicSession.findOne({ guildId: message.guild.id });
-                    if (!session) return;
+                    const s = await MusicSession.findOne({ guildId: message.guild.id });
+                    if (!s) return;
 
-                    if (session.loop === "song") {
+                    if (s.loop === "song") {
                         playSong(message.guild.id, client);
-                    } else {
-                        session.currentIndex++;
-                        if (session.currentIndex >= session.queue.length) {
-                            if (session.loop === "queue") {
-                                session.currentIndex = 0;
-                            } else {
-                                session.queue = [];
-                                session.currentIndex = 0;
-                                await session.save();
-
-                                const timeout = setTimeout(async () => {
-                                    console.log("Idle timeout - disconnecting...");
-                                    const conn = connections.get(message.guild.id);
-                                    if (conn) {
-                                        conn.destroy();
-                                        connections.delete(message.guild.id);
-                                    }
-                                    players.delete(message.guild.id);
-                                    resources.delete(message.guild.id);
-                                    idleTimeouts.delete(message.guild.id);
-                                    await MusicSession.deleteOne({ guildId: message.guild.id });
-
-                                    const textChannel = message.guild.channels.cache.get(session.textChannelId);
-                                    if (textChannel) {
-                                        const embed = new MessageEmbed()
-                                            .setColor(config.embedColor)
-                                            .setDescription(`> 👋 disconnected due to inactivity.`);
-                                        textChannel.send({ embeds: [embed] }).catch(() => { });
-                                    }
-                                }, 60000);
-
-                                idleTimeouts.set(message.guild.id, timeout);
-                                return;
-                            }
-                        }
-                        await session.save();
-                        playSong(message.guild.id, client);
+                        return;
                     }
+
+                    s.currentIndex++;
+                    if (s.currentIndex >= s.queue.length) {
+                        if (s.loop === "queue") {
+                            s.currentIndex = 0;
+                        } else {
+                            s.queue = [];
+                            s.currentIndex = 0;
+                            await s.save();
+
+                            const timeout = setTimeout(async () => {
+                                console.log("Idle timeout - disconnecting...");
+                                const conn = connections.get(message.guild.id);
+                                if (conn) {
+                                    conn.destroy();
+                                    connections.delete(message.guild.id);
+                                }
+                                players.delete(message.guild.id);
+                                resources.delete(message.guild.id);
+                                idleTimeouts.delete(message.guild.id);
+                                await MusicSession.deleteOne({ guildId: message.guild.id });
+
+                                const textChannel = message.guild.channels.cache.get(s.textChannelId);
+                                if (textChannel) {
+                                    const embed = new MessageEmbed()
+                                        .setColor(config.embedColor)
+                                        .setDescription(`> 👋 disconnected due to inactivity.`);
+                                    textChannel.send({ embeds: [embed] }).catch(() => { });
+                                }
+                            }, 60000);
+
+                            idleTimeouts.set(message.guild.id, timeout);
+                            return;
+                        }
+                    }
+
+                    await s.save();
+                    playSong(message.guild.id, client);
                 });
 
                 player.on("error", (error) => {
@@ -524,20 +542,24 @@ module.exports = {
                     ownerId: message.author.id,
                     channelId: voiceChannel.id,
                     textChannelId: message.channel.id,
-                    queue: [songInfo]
+                    queue: [songInfo],
+                    currentIndex: 0,
+                    volume: 35,
                 });
             } else {
                 session.queue.push(songInfo);
             }
             await session.save();
 
-            // Start playing if this is the first song
+            // Start playing if first song
             if (session.queue.length === 1) {
                 playSong(message.guild.id, client);
                 const embed = new MessageEmbed()
                     .setColor(config.embedColor)
                     .setThumbnail(songInfo.thumbnail)
-                    .setDescription(`> 🎶 <@${message.author.id}>: now playing **${songInfo.title}**\n> Channel: **${songInfo.channel}** • Duration: **${songInfo.duration}**`);
+                    .setDescription(
+                        `> 🎶 <@${message.author.id}>: now playing **${songInfo.title}**\n> Channel: **${songInfo.channel}** • Duration: **${songInfo.duration}**`
+                    );
                 message.channel.send({ embeds: [embed] });
             } else {
                 const embed = new MessageEmbed()
@@ -545,7 +567,6 @@ module.exports = {
                     .setDescription(`> ➕ <@${message.author.id}>: added **${songInfo.title}** to queue (position ${session.queue.length})`);
                 message.channel.send({ embeds: [embed] });
             }
-
         } catch (error) {
             console.error("Play command error:", error);
             const embed = new MessageEmbed()
@@ -553,5 +574,5 @@ module.exports = {
                 .setDescription(`❌ <@${message.author.id}>: failed to play song.`);
             message.reply({ embeds: [embed] });
         }
-    }
+    },
 };
