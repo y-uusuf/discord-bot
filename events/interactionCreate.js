@@ -5,17 +5,17 @@ const TempVoice = require("../models/tempVoice");
 module.exports = {
     name: "interactionCreate",
     async execute(interaction, client) {
-        
-        
+
+
         if (!interaction.isButton() && !interaction.isModalSubmit()) return;
 
-        
+
         if (interaction.isButton()) {
             if (!interaction.customId.startsWith("vc_")) return;
 
             const action = interaction.customId.replace("vc_", "");
 
-            
+
             if (action === "claim") {
                 const currentChannel = interaction.member.voice.channel;
                 if (!currentChannel) {
@@ -34,7 +34,7 @@ module.exports = {
                     return interaction.reply({ embeds: [embed], ephemeral: true });
                 }
 
-                
+
                 tempVoice.ownerId = interaction.user.id;
                 await tempVoice.save();
 
@@ -48,7 +48,7 @@ module.exports = {
                 return interaction.reply({ embeds: [embed], ephemeral: true });
             }
 
-            
+
             if (!interaction.member.voice.channel) {
                 const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: you must be in a voice channel to manage it.`);
                 return interaction.reply({ embeds: [embed], ephemeral: true });
@@ -56,7 +56,7 @@ module.exports = {
 
             const currentChannel = interaction.member.voice.channel;
 
-            
+
             const tempVoice = await TempVoice.findOne({ channelId: currentChannel.id });
 
             if (!tempVoice) {
@@ -64,21 +64,21 @@ module.exports = {
                 return interaction.reply({ embeds: [embed], ephemeral: true });
             }
 
-            
+
             if (tempVoice.ownerId !== interaction.user.id) {
                 const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${interaction.user.id}>: you don't have ownership over <#${currentChannel.id}>.`);
                 return interaction.reply({ embeds: [embed], ephemeral: true });
             }
 
-            
+
             const channel = currentChannel;
 
 
-            
-            
+
+
             const sendUserSelect = async (customId, placeholder, emoji) => {
                 try {
-                    
+
                     const text = placeholder.toLowerCase();
 
                     const promptEmbed = new MessageEmbed()
@@ -110,7 +110,7 @@ module.exports = {
                 }
             };
 
-            
+
             switch (action) {
                 case "name":
                     const nameModal = new Modal().setCustomId("vc_modal_name").setTitle("Change Channel Name");
@@ -127,35 +127,37 @@ module.exports = {
                     break;
 
                 case "lock":
-                    await channel.permissionOverwrites.edit(interaction.guild.id, { CONNECT: false });
-                    tempVoice.locked = true;
-                    await tempVoice.save();
-                    const lockEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔒 <@${interaction.user.id}>: channel locked.`);
-                    await interaction.reply({ embeds: [lockEmbed], ephemeral: true });
-                    break;
-
-                case "unlock":
-                    await channel.permissionOverwrites.edit(interaction.guild.id, { CONNECT: null });
-                    tempVoice.locked = false;
-                    await tempVoice.save();
-                    const unlockEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔓 <@${interaction.user.id}>: channel unlocked.`);
-                    await interaction.reply({ embeds: [unlockEmbed], ephemeral: true });
+                    // Toggle lock state based on current state
+                    if (tempVoice.locked) {
+                        await channel.permissionOverwrites.edit(interaction.guild.id, { CONNECT: null });
+                        tempVoice.locked = false;
+                        await tempVoice.save();
+                        const unlockEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔓 <@${interaction.user.id}>: channel unlocked.`);
+                        await interaction.reply({ embeds: [unlockEmbed], ephemeral: true });
+                    } else {
+                        await channel.permissionOverwrites.edit(interaction.guild.id, { CONNECT: false });
+                        tempVoice.locked = true;
+                        await tempVoice.save();
+                        const lockEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔒 <@${interaction.user.id}>: channel locked.`);
+                        await interaction.reply({ embeds: [lockEmbed], ephemeral: true });
+                    }
                     break;
 
                 case "hide":
-                    await channel.permissionOverwrites.edit(interaction.guild.id, { VIEW_CHANNEL: false });
-                    tempVoice.hidden = true;
-                    await tempVoice.save();
-                    const hideEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 👻 <@${interaction.user.id}>: channel hidden.`);
-                    await interaction.reply({ embeds: [hideEmbed], ephemeral: true });
-                    break;
-
-                case "unhide":
-                    await channel.permissionOverwrites.edit(interaction.guild.id, { VIEW_CHANNEL: null });
-                    tempVoice.hidden = false;
-                    await tempVoice.save();
-                    const unhideEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 👀 <@${interaction.user.id}>: channel unhidden.`);
-                    await interaction.reply({ embeds: [unhideEmbed], ephemeral: true });
+                    // Toggle hide state based on current state
+                    if (tempVoice.hidden) {
+                        await channel.permissionOverwrites.edit(interaction.guild.id, { VIEW_CHANNEL: null });
+                        tempVoice.hidden = false;
+                        await tempVoice.save();
+                        const unhideEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 👀 <@${interaction.user.id}>: channel unhidden.`);
+                        await interaction.reply({ embeds: [unhideEmbed], ephemeral: true });
+                    } else {
+                        await channel.permissionOverwrites.edit(interaction.guild.id, { VIEW_CHANNEL: false });
+                        tempVoice.hidden = true;
+                        await tempVoice.save();
+                        const hideEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 👻 <@${interaction.user.id}>: channel hidden.`);
+                        await interaction.reply({ embeds: [hideEmbed], ephemeral: true });
+                    }
                     break;
 
                 case "delete":
@@ -190,7 +192,7 @@ module.exports = {
             }
         }
 
-        
+
         if (interaction.isModalSubmit()) {
             const tempVoice = await TempVoice.findOne({ ownerId: interaction.user.id });
             if (!tempVoice) return;

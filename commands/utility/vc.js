@@ -10,7 +10,7 @@ module.exports = {
 
         if (!action) {
             const embed = new MessageEmbed()
-                .setColor(config.embedColor).setDescription(`🎤 <@${message.author.id}>: manage your temp voice channel.\n\n**usage:** \`,vc <action> [value]\`\n**example:** \`,vc name Chill Zone\`\n\n**actions:** name, limit, lock, unlock, trust, untrust, kick, ban, unban, claim, transfer, invite, delete`);
+                .setColor(config.embedColor).setDescription(`🎤 <@${message.author.id}>: manage your temp voice channel.\n\n**usage:** \`,vc <action> [value]\`\n**example:** \`,vc name Chill Zone\`\n\n**actions:** name, topic, limit, lock, unlock, hide, show, trust, deny, kick, ban, unban, claim, transfer, invite, delete`);
             return message.reply({ embeds: [embed] });
         }
 
@@ -74,6 +74,22 @@ module.exports = {
                     message.react("👍");
                     break;
 
+                case "topic":
+                case "status":
+                    const newStatus = args.slice(1).join(" ");
+                    try {
+                        // Voice channels use a special status endpoint
+                        await client.api.channels(channel.id)['voice-status'].put({
+                            data: { status: newStatus || null }
+                        });
+                        message.react("👍");
+                    } catch (err) {
+                        console.error("Status error:", err);
+                        const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: failed to set status`);
+                        message.reply({ embeds: [embed] });
+                    }
+                    break;
+
                 case "limit":
                     const limit = parseInt(args[1]);
                     if (isNaN(limit) || limit < 0 || limit > 99) {
@@ -100,6 +116,20 @@ module.exports = {
                     message.react("👍");
                     break;
 
+                case "hide":
+                    await channel.permissionOverwrites.edit(message.guild.id, { VIEW_CHANNEL: false });
+                    tempVoice.hidden = true;
+                    await tempVoice.save();
+                    message.react("👍");
+                    break;
+
+                case "show":
+                    await channel.permissionOverwrites.edit(message.guild.id, { VIEW_CHANNEL: null });
+                    tempVoice.hidden = false;
+                    await tempVoice.save();
+                    message.react("👍");
+                    break;
+
                 case "trust":
                     const userToTrust = message.mentions.users.first() || client.users.cache.get(args[1]);
                     if (!userToTrust) {
@@ -112,15 +142,54 @@ module.exports = {
                     message.react("👍");
                     break;
 
-                case "untrust":
-                    const userToUntrust = message.mentions.users.first() || client.users.cache.get(args[1]);
-                    if (!userToUntrust) {
-                        const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: please mention a user`);
+                case "deny":
+                    const denyTarget = args[1]?.toLowerCase();
+
+                    // Handle "deny all" - kick everyone except owner and bot
+                    if (denyTarget === "all") {
+                        // Enable deny all mode
+                        tempVoice.denyAll = true;
+                        tempVoice.allowedUsers = [];
+                        await tempVoice.save();
+
+                        // Lock the channel
+                        await channel.permissionOverwrites.edit(message.guild.id, { CONNECT: false });
+                        tempVoice.locked = true;
+                        await tempVoice.save();
+
+                        // Kick everyone except owner and bot
+                        const membersToKick = channel.members.filter(m =>
+                            m.id !== message.author.id && !m.user.bot
+                        );
+
+                        for (const [, member] of membersToKick) {
+                            await member.voice.setChannel(null).catch(() => { });
+                        }
+
+                        const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔒 <@${message.author.id}>: deny all enabled. no one can join your channel.`);
                         return message.reply({ embeds: [embed] });
                     }
-                    await channel.permissionOverwrites.delete(userToUntrust.id);
-                    tempVoice.allowedUsers = tempVoice.allowedUsers.filter(id => id !== userToUntrust.id);
+
+                    // Handle "deny @user" - remove specific user's trust
+                    const userToDeny = message.mentions.users.first() || client.users.cache.get(args[1]);
+                    if (!userToDeny) {
+                        const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: use \`,vc deny @user\` or \`,vc deny all\``);
+                        return message.reply({ embeds: [embed] });
+                    }
+                    await channel.permissionOverwrites.delete(userToDeny.id);
+                    tempVoice.allowedUsers = tempVoice.allowedUsers.filter(id => id !== userToDeny.id);
                     await tempVoice.save();
+                    message.react("👍");
+                    break;
+
+                case "allow":
+                    // Disable deny all mode
+                    if (args[1]?.toLowerCase() === "all") {
+                        tempVoice.denyAll = false;
+                        await tempVoice.save();
+                        const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔓 <@${message.author.id}>: deny all disabled. people can join again.`);
+                        return message.reply({ embeds: [embed] });
+                    }
                     message.react("👍");
                     break;
 

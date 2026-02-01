@@ -17,3 +17,5 @@ Thumbs.db
 .vscode/
 
 push.py
+
+.local

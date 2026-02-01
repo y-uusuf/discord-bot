@@ -169,8 +169,12 @@ client.once("ready", () => {
     console.warn("LOGIN_CHANNEL_ID not set in .env");
   }
 
+  // Check if .local file exists to indicate development mode
+  const isLocalDev = fs.existsSync(path.join(__dirname, '.local'));
+  const activityName = isLocalDev ? ',help - being edited.' : config.activityName;
+
   client.user.setPresence({
-    activities: [{ name: config.activityName, type: `${config.activityType}` }],
+    activities: [{ name: activityName, type: `${config.activityType}` }],
     status: `${config.activityStatus}`,
   });
 });
