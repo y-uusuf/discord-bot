@@ -175,6 +175,9 @@ module.exports = {
                 const selectedIndex = parseInt(collected.values[0]);
                 const selected = results[selectedIndex];
 
+                // Immediately acknowledge the interaction to prevent timeout
+                await collected.deferUpdate();
+
                 // Get the video URL - play-dl uses 'url' property
                 const videoUrl = selected.url || `https://www.youtube.com/watch?v=${selected.id}`;
                 console.log("Selected video URL:", videoUrl);
@@ -189,7 +192,6 @@ module.exports = {
 
                 console.log("Song info:", songInfo);
 
-                await collected.deferUpdate();
                 await searchMsg.delete().catch(() => { });
             }
 
