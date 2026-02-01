@@ -1,7 +1,10 @@
 const { MessageEmbed, MessageActionRow, MessageSelectMenu } = require("discord.js");
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, StreamType } = require("@discordjs/voice");
 const play = require("play-dl");
-const { spawn } = require("child_process");
+const { spawn } = require("child_process"); // kept (do not remove features)
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const config = require("../../config.json");
 const MusicSession = require("../../models/musicSession");
 
@@ -10,6 +13,105 @@ const players = new Map();
 const connections = new Map();
 const resources = new Map();  // For dynamic volume control
 const idleTimeouts = new Map();  // For auto-disconnect after 1 minute
+
+// ---- Cookie helpers (supports cloud-safe one-line env) ----
+let cachedCookieFilePath = null;
+let cachedCookieHeader = null;
+
+function netscapeToCookieHeader(netscapeText) {
+    // Parse Netscape cookie file -> "name=value; name2=value2"
+    // Ignores comments and invalid lines.
+    const lines = String(netscapeText || "").split(/\r?\n/);
+    const pairs = [];
+
+    for (const line of lines) {
+        if (!line || line.startsWith("#")) continue;
+
+        // Netscape format has tab-separated fields, cookie name is 6th, value is 7th
+        const parts = line.split("\t");
+        if (parts.length < 7) continue;
+
+        const name = parts[5];
+        const value = parts[6];
+
+        if (!name || typeof value === "undefined") continue;
+
+        // Avoid duplicates by keeping last occurrence
+        pairs.push([name, value]);
+    }
+
+    // Deduplicate (keep last)
+    const map = new Map();
+    for (const [k, v] of pairs) map.set(k, v);
+
+    return Array.from(map.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
+}
+
+function getCookieFilePathFromEnv() {
+    if (cachedCookieFilePath) return cachedCookieFilePath;
+
+    // Priority 1: base64 (single line) netscape cookie file
+    if (process.env.YOUTUBE_COOKIES_B64 && process.env.YOUTUBE_COOKIES_B64.trim()) {
+        try {
+            const buf = Buffer.from(process.env.YOUTUBE_COOKIES_B64.trim(), "base64");
+            const tmpPath = path.join(os.tmpdir(), `youtube-cookies-${process.pid}.txt`);
+            fs.writeFileSync(tmpPath, buf);
+            cachedCookieFilePath = tmpPath;
+            return cachedCookieFilePath;
+        } catch (e) {
+            // fall through
+        }
+    }
+
+    // Priority 2: explicit file path
+    if (process.env.YOUTUBE_COOKIES_PATH && process.env.YOUTUBE_COOKIES_PATH.trim()) {
+        cachedCookieFilePath = process.env.YOUTUBE_COOKIES_PATH.trim();
+        return cachedCookieFilePath;
+    }
+
+    return null;
+}
+
+function getCookieHeaderFromEnv() {
+    if (cachedCookieHeader) return cachedCookieHeader;
+
+    // If user provides a cookie header directly
+    if (process.env.YOUTUBE_COOKIES && process.env.YOUTUBE_COOKIES.trim()) {
+        cachedCookieHeader = process.env.YOUTUBE_COOKIES.trim();
+        return cachedCookieHeader;
+    }
+
+    // Otherwise derive cookie header from netscape file content if present
+    const cookieFile = getCookieFilePathFromEnv();
+    if (cookieFile) {
+        try {
+            const text = fs.readFileSync(cookieFile, "utf8");
+            cachedCookieHeader = netscapeToCookieHeader(text);
+            return cachedCookieHeader;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    return null;
+}
+
+// Initialize play-dl with cookies if available (does not log cookies)
+(async () => {
+    try {
+        const cookieHeader = getCookieHeaderFromEnv();
+        if (cookieHeader) {
+            await play.setToken({
+                youtube: {
+                    cookie: cookieHeader
+                }
+            });
+            console.log("YouTube cookies loaded for play-dl");
+        }
+    } catch (err) {
+        console.log("Failed to load YouTube cookies:", err.message);
+    }
+})();
 
 async function playSong(guildId, client) {
     const session = await MusicSession.findOne({ guildId });
@@ -30,15 +132,24 @@ async function playSong(guildId, client) {
         // Use yt-dlp-exec to get audio stream (streams directly, no files saved)
         const ytDlpExec = require("yt-dlp-exec");
 
-        const ytdlpProcess = ytDlpExec.exec(song.url, {
-            output: '-',
-            format: 'worstaudio[abr<=128]/worstaudio/bestaudio[abr<=128]/bestaudio',
-            noPlaylist: true,
-            quiet: true
-        });
+        const cookieFilePath = getCookieFilePathFromEnv();
 
-        ytdlpProcess.stderr.on('data', (data) => {
-            console.log('yt-dlp stderr:', data.toString());
+        const ytdlpOptions = {
+            output: "-",
+            format: "worstaudio[abr<=128]/worstaudio/bestaudio[abr<=128]/bestaudio",
+            noPlaylist: true,
+            quiet: true,
+        };
+
+        // If cookies exist, pass them to yt-dlp
+        if (cookieFilePath) {
+            ytdlpOptions.cookies = cookieFilePath;
+        }
+
+        const ytdlpProcess = ytDlpExec.exec(song.url, ytdlpOptions);
+
+        ytdlpProcess.stderr.on("data", (data) => {
+            console.log("yt-dlp stderr:", data.toString());
         });
 
         const resource = createAudioResource(ytdlpProcess.stdout, {
@@ -56,7 +167,7 @@ async function playSong(guildId, client) {
             console.log("Started playing with yt-dlp!");
         }
 
-        ytdlpProcess.on('error', (err) => {
+        ytdlpProcess.on("error", (err) => {
             console.error("yt-dlp process error:", err);
         });
 
@@ -223,7 +334,7 @@ module.exports = {
                 connection.subscribe(player);
 
                 // Log player state changes
-                player.on('stateChange', (oldState, newState) => {
+                player.on("stateChange", (oldState, newState) => {
                     console.log(`Player state: ${oldState.status} -> ${newState.status}`);
                 });
 
@@ -232,12 +343,12 @@ module.exports = {
                     const session = await MusicSession.findOne({ guildId: message.guild.id });
                     if (!session) return;
 
-                    if (session.loop === 'song') {
+                    if (session.loop === "song") {
                         playSong(message.guild.id, client);
                     } else {
                         session.currentIndex++;
                         if (session.currentIndex >= session.queue.length) {
-                            if (session.loop === 'queue') {
+                            if (session.loop === "queue") {
                                 session.currentIndex = 0;
                             } else {
                                 // Queue finished - set 1 minute idle timeout
@@ -277,8 +388,8 @@ module.exports = {
                     }
                 });
 
-                player.on('error', error => {
-                    console.error('Audio player error:', error);
+                player.on("error", error => {
+                    console.error("Audio player error:", error);
                 });
 
                 connection.on(VoiceConnectionStatus.Disconnected, async () => {
