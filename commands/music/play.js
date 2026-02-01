@@ -193,56 +193,68 @@ async function getSongInfoViaYtDlp(url) {
 async function streamViaYtDlp(url, volumePercent) {
     const cookieFile = getCookieFilePathFromEnv();
 
-    const child = ytDlpExec.exec(url, {
-        output: "-",
-        // ✅ fallback chain - avoids "Requested format is not available"
-        format: "bestaudio[acodec=opus]/bestaudio[ext=webm]/bestaudio",
-        noPlaylist: true,
-        quiet: true,
-        noWarnings: true,
-        userAgent:
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        ...(cookieFile ? { cookies: cookieFile } : {}),
-    });
+    const spawn = (format) =>
+        ytDlpExec.exec(url, {
+            output: "-",
+            format,
+            noPlaylist: true,
+            quiet: true,
+            noWarnings: true,
+            userAgent:
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            ...(cookieFile ? { cookies: cookieFile } : {}),
+        });
 
-    // ✅ bigger buffer for cloud smoothness
-    const pass = new PassThrough({ highWaterMark: 2 << 20 }); // 2MB
+    // Try a slightly “Discord-friendly” choice first, but WITHOUT filters
+    let child = spawn("bestaudio/best");
+
+    const pass = new PassThrough({ highWaterMark: 2 << 20 }); // 2MB buffer
     child.stdout.pipe(pass);
 
-    const { stream, type } = await demuxProbe(pass);
+    // If yt-dlp instantly errors, retry once with the simplest possible format
+    const fatalPromise = new Promise((_, reject) => {
+        child.stderr.on("data", (d) => {
+            const msg = d.toString();
+            if (msg.includes("Requested format is not available")) {
+                reject(new Error(msg.trim()));
+            }
+            if (msg.includes("Sign in to confirm")) {
+                reject(new Error(msg.trim()));
+            }
+        });
+        child.on("error", reject);
+    });
+
+    // demuxProbe can hang if the stream dies early -> race it
+    let probed;
+    try {
+        probed = await Promise.race([demuxProbe(pass), fatalPromise]);
+    } catch (e) {
+        // retry with safest possible
+        try {
+            child.kill?.("SIGKILL");
+        } catch { }
+
+        child = spawn("best");
+        const pass2 = new PassThrough({ highWaterMark: 2 << 20 });
+        child.stdout.pipe(pass2);
+
+        probed = await demuxProbe(pass2); // if this fails too, outer caller will fall back to play-dl
+    }
+
+    const { stream, type } = probed;
 
     const resource = createAudioResource(stream, {
         inputType: type,
         inlineVolume: true,
     });
 
-    const capped = clampVolume(volumePercent, VOLUME_CAP);
+    const capped = clampVolume(volumePercent, 25); // lower for stability
     resource.volume?.setVolume(capped / 100);
-
-    child.stderr.on("data", (d) => {
-        const msg = d.toString().trim();
-        if (!msg) return;
-
-        // Only log + kill on real fatal issues (avoid killing on harmless stderr)
-        if (msg.includes("Sign in to confirm") || msg.includes("Requested format is not available")) {
-            console.log("yt-dlp:", msg);
-            pass.destroy(new Error("yt-dlp fatal: " + msg));
-            return;
-        }
-
-        // optional: log other errors without killing immediately
-        if (msg.startsWith("ERROR:")) {
-            console.log("yt-dlp:", msg);
-        }
-    });
-
-    child.on("error", (err) => {
-        console.error("yt-dlp process error:", err.message || err);
-        pass.destroy(err);
-    });
 
     return { resource, child };
 }
+
 
 // ---- Core playback ----
 async function playSong(guildId, client) {
