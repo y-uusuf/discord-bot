@@ -27,22 +27,11 @@ async function playSong(guildId, client) {
     console.log("Playing song:", song.title, "-", song.url);
 
     try {
-        // Use yt-dlp-exec to get audio stream (streams directly, no files saved)
-        const ytDlpExec = require("yt-dlp-exec");
+        // Use play-dl to stream (has better YouTube handling)
+        const source = await play.stream(song.url, { quality: 2 });
 
-        const ytdlpProcess = ytDlpExec.exec(song.url, {
-            output: '-',
-            format: 'worstaudio[abr<=128]/worstaudio/bestaudio[abr<=128]/bestaudio',
-            noPlaylist: true,
-            quiet: true
-        });
-
-        ytdlpProcess.stderr.on('data', (data) => {
-            console.log('yt-dlp stderr:', data.toString());
-        });
-
-        const resource = createAudioResource(ytdlpProcess.stdout, {
-            inputType: StreamType.Arbitrary,
+        const resource = createAudioResource(source.stream, {
+            inputType: source.type,
             inlineVolume: true
         });
         resource.volume?.setVolume(session.volume / 100);
@@ -53,12 +42,8 @@ async function playSong(guildId, client) {
         const player = players.get(guildId);
         if (player) {
             player.play(resource);
-            console.log("Started playing with yt-dlp!");
+            console.log("Started playing!");
         }
-
-        ytdlpProcess.on('error', (err) => {
-            console.error("yt-dlp process error:", err);
-        });
 
     } catch (err) {
         console.error("Error playing song:", err.message || err);
