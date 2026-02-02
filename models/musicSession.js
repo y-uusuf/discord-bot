@@ -15,7 +15,7 @@ const musicSessionSchema = new mongoose.Schema({
     textChannelId: { type: String, required: true },
     queue: { type: [songSchema], default: [] },
     currentIndex: { type: Number, default: 0 },
-    volume: { type: Number, default: 100 },
+    volume: { type: Number, default: 30 },
     isPaused: { type: Boolean, default: false },
     loop: { type: String, enum: ['none', 'song', 'queue'], default: 'none' }
 });

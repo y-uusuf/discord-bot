@@ -1,271 +1,44 @@
 const { MessageEmbed, MessageActionRow, MessageSelectMenu } = require("discord.js");
-const {
-    joinVoiceChannel,
-    createAudioPlayer,
-    createAudioResource,
-    AudioPlayerStatus,
-    VoiceConnectionStatus,
-    entersState,
-    demuxProbe,
-} = require("@discordjs/voice");
-const { PassThrough } = require("stream");
-
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, StreamType } = require("@discordjs/voice");
 const play = require("play-dl");
+const { spawn } = require("child_process");
 const config = require("../../config.json");
 const MusicSession = require("../../models/musicSession");
 
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
-const ytDlpExec = require("yt-dlp-exec");
+// Configure FFmpeg path
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+console.log("FFmpeg configured:", ffmpegPath);
 
-// =================== helpers ===================
-const VOLUME_CAP = 25; // lower = more headroom, less distortion
+// SoundCloud initialization flag
+let soundcloudReady = false;
 
-function clampVolume(requested, cap = VOLUME_CAP) {
-    const n = Number(requested);
-    const v = Number.isFinite(n) ? n : 100;
-    return Math.max(1, Math.min(cap, v));
-}
+// Initialize play-dl for SoundCloud
+async function initSoundCloud() {
+    if (soundcloudReady) return true;
 
-function safeB64(str) {
-    return String(str || "").replace(/\s+/g, "").trim();
-}
-
-function ensureTmpCookieFile(contentsOrPath, mode) {
-    // mode: "b64" | "path"
-    const tmpPath = path.join(os.tmpdir(), `youtube-cookies-${process.pid}.txt`);
-
-    if (mode === "b64") {
-        const buf = Buffer.from(contentsOrPath, "base64");
-        fs.writeFileSync(tmpPath, buf);
-        return tmpPath;
+    try {
+        const clientID = await play.getFreeClientID();
+        await play.setToken({
+            soundcloud: {
+                client_id: clientID
+            }
+        });
+        soundcloudReady = true;
+        console.log("✅ SoundCloud initialized");
+        return true;
+    } catch (err) {
+        console.error("Failed to initialize SoundCloud:", err);
+        return false;
     }
-
-    // mode === "path": copy secret file (read-only) to /tmp (writable)
-    fs.copyFileSync(contentsOrPath, tmpPath);
-    return tmpPath;
 }
 
-// Store active players, connections, audio resources, and idle timeouts
+// Store active players, connections, audio resources, FFmpeg processes, and idle timeouts
 const players = new Map();
 const connections = new Map();
 const resources = new Map();
+const ffmpegProcesses = new Map();
 const idleTimeouts = new Map();
 
-// ---- Cookie helpers ----
-let cachedCookieFilePath = null;
-let cachedCookieHeader = null;
-
-function netscapeToCookieHeader(netscapeText) {
-    const lines = String(netscapeText || "").split(/\r?\n/);
-    const pairs = [];
-    for (const line of lines) {
-        if (!line || line.startsWith("#")) continue;
-        const parts = line.split("\t");
-        if (parts.length < 7) continue;
-        const name = parts[5];
-        const value = parts[6];
-        if (!name || typeof value === "undefined") continue;
-        pairs.push([name, value]);
-    }
-    const map = new Map();
-    for (const [k, v] of pairs) map.set(k, v);
-    return Array.from(map.entries())
-        .map(([k, v]) => `${k}=${v}`)
-        .join("; ");
-}
-
-function getCookieFilePathFromEnv() {
-    if (cachedCookieFilePath) return cachedCookieFilePath;
-
-    // Priority 1: base64 netscape cookie file
-    const rawB64 = process.env.YOUTUBE_COOKIES_B64 || process.env.YOUTUBE_COOKIES_B65;
-    const b64 = safeB64(rawB64);
-    if (b64) {
-        try {
-            cachedCookieFilePath = ensureTmpCookieFile(b64, "b64");
-            return cachedCookieFilePath;
-        } catch (err) {
-            console.error("Invalid base64 YouTube cookies:", err.message);
-        }
-    }
-
-    // Priority 2: secret file path (Render secret files are read-only -> copy to /tmp)
-    if (process.env.YOUTUBE_COOKIES_PATH && process.env.YOUTUBE_COOKIES_PATH.trim()) {
-        const src = process.env.YOUTUBE_COOKIES_PATH.trim();
-        try {
-            cachedCookieFilePath = ensureTmpCookieFile(src, "path");
-            return cachedCookieFilePath;
-        } catch (err) {
-            console.error("Failed to copy cookies secret file:", err.message);
-            return null;
-        }
-    }
-
-    return null;
-}
-
-function getCookieHeaderFromEnv() {
-    if (cachedCookieHeader) return cachedCookieHeader;
-
-    // Cookie header directly
-    if (process.env.YOUTUBE_COOKIES && process.env.YOUTUBE_COOKIES.trim()) {
-        cachedCookieHeader = process.env.YOUTUBE_COOKIES.trim();
-        return cachedCookieHeader;
-    }
-
-    // Derive from netscape file (from /tmp copy)
-    const cookieFile = getCookieFilePathFromEnv();
-    if (cookieFile) {
-        try {
-            const text = fs.readFileSync(cookieFile, "utf8");
-            cachedCookieHeader = netscapeToCookieHeader(text);
-            return cachedCookieHeader;
-        } catch (err) {
-            console.error("Failed to read cookie file:", err.message);
-            return null;
-        }
-    }
-    return null;
-}
-
-function debugCookieFileOnce() {
-    const cookieFile = getCookieFilePathFromEnv();
-    if (!cookieFile) {
-        console.log("[cookies] No cookie file found from env.");
-        return;
-    }
-    try {
-        const stat = fs.statSync(cookieFile);
-        const firstLine = fs.readFileSync(cookieFile, "utf8").split(/\r?\n/)[0] || "";
-        console.log(`[cookies] cookieFile=${cookieFile} size=${stat.size} firstLine="${firstLine}"`);
-    } catch (e) {
-        console.log("[cookies] Could not stat/read cookie file:", e.message);
-    }
-}
-
-// Initialize play-dl with cookies if available
-(async () => {
-    try {
-        debugCookieFileOnce();
-        const cookieHeader = getCookieHeaderFromEnv();
-        if (cookieHeader) {
-            await play.setToken({ youtube: { cookie: cookieHeader } });
-            console.log("YouTube cookies loaded for play-dl");
-        } else {
-            console.log("No YouTube cookies header available for play-dl.");
-        }
-    } catch (err) {
-        console.log("Failed to load YouTube cookies:", err.message);
-    }
-})();
-
-// ---- yt-dlp helpers ----
-async function getSongInfoViaYtDlp(url) {
-    const cookieFile = getCookieFilePathFromEnv();
-    const args = {
-        dumpSingleJson: true,
-        noPlaylist: true,
-        skipDownload: true,
-        quiet: true,
-        ...(cookieFile ? { cookies: cookieFile } : {}),
-    };
-
-    const json = await ytDlpExec(url, args);
-    const title = json?.title || "Unknown";
-    const channel = json?.uploader || json?.channel || "Unknown";
-    const durationSec = json?.duration;
-
-    const duration =
-        typeof durationSec === "number"
-            ? `${Math.floor(durationSec / 60)}:${String(durationSec % 60).padStart(2, "0")}`
-            : "?:??";
-
-    const thumbnail =
-        Array.isArray(json?.thumbnails) && json.thumbnails.length
-            ? json.thumbnails[json.thumbnails.length - 1]?.url || null
-            : json?.thumbnail || null;
-
-    return { title, url, duration, thumbnail, channel };
-}
-
-async function streamViaYtDlp(url, volumePercent) {
-    const cookieFile = getCookieFilePathFromEnv();
-
-    // Force Discord-friendly audio (Opus in WebM). If not available, we FAIL so caller falls back to play-dl.
-    const child = ytDlpExec.exec(url, {
-        output: "-",
-        // ✅ Only formats that Discord voice handles smoothly (no transcoding)
-        // 1) Opus/WebM (ideal)
-        // 2) Any WebM audio (usually Opus; avoids AAC/M4A silent issue)
-        format: "bestaudio[acodec=opus][ext=webm]/bestaudio[ext=webm]",
-        noPlaylist: true,
-        quiet: true,
-        noWarnings: true,
-        // helps on some cloud IPs
-        userAgent:
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        ...(cookieFile ? { cookies: cookieFile } : {}),
-    });
-
-    // Buffer the pipe to reduce micro-stutter
-    const pass = new PassThrough({ highWaterMark: 2 << 20 }); // 2MB
-    child.stdout.pipe(pass);
-
-    // If yt-dlp errors, kill the stream so the player goes Idle and your code can fallback to play-dl
-    child.stderr.on("data", (d) => {
-        const msg = d.toString().trim();
-        if (!msg) return;
-
-        // Log useful errors
-        if (msg.startsWith("ERROR:") || msg.includes("[youtube]")) {
-            console.log("yt-dlp:", msg);
-        }
-
-        // Fatal: no suitable (webm/opus) format or blocked
-        if (
-            msg.includes("Requested format is not available") ||
-            msg.includes("Sign in to confirm")
-        ) {
-            pass.destroy(new Error("yt-dlp fatal: " + msg));
-        }
-    });
-
-    child.on("error", (err) => {
-        console.error("yt-dlp process error:", err.message || err);
-        pass.destroy(err);
-    });
-
-    // Probe container/codec so discord.js voice uses the correct inputType
-    let probed;
-    try {
-        probed = await demuxProbe(pass);
-    } catch (err) {
-        // Ensure process is stopped if probe fails
-        try { child.kill?.("SIGKILL"); } catch { }
-        throw err;
-    }
-
-    const { stream, type } = probed;
-
-    // (Optional) quick debug - keep until it’s stable
-    // console.log("[probe] inputType =", type);
-
-    const resource = createAudioResource(stream, {
-        inputType: type,
-        inlineVolume: true,
-    });
-
-    const capped = clampVolume(volumePercent, 25); // lower = more stable/headroom
-    resource.volume?.setVolume(capped / 100);
-
-    return { resource, child };
-}
-
-
-
-// ---- Core playback ----
 async function playSong(guildId, client) {
     const session = await MusicSession.findOne({ guildId });
     if (!session || session.queue.length === 0) return;
@@ -279,25 +52,49 @@ async function playSong(guildId, client) {
         idleTimeouts.delete(guildId);
     }
 
-    const volume = clampVolume(session.volume || 100, VOLUME_CAP);
+    // Kill any existing FFmpeg process for this guild
+    if (ffmpegProcesses.has(guildId)) {
+        const oldProcess = ffmpegProcesses.get(guildId);
+        oldProcess.kill('SIGKILL');
+        ffmpegProcesses.delete(guildId);
+    }
+
     console.log("Playing song:", song.title, "-", song.url);
 
     try {
-        let resource;
+        // Get the raw stream from play-dl
+        const streamInfo = await play.stream(song.url);
 
-        try {
-            const fallback = await streamViaYtDlp(song.url, volume);
-            resource = fallback.resource;
-        } catch (e) {
-            console.log("yt-dlp stream failed, falling back to play-dl:", e?.message || e);
-            const source = await play.stream(song.url, { quality: 2 });
-            resource = createAudioResource(source.stream, {
-                inputType: source.type,
-                inlineVolume: true,
-            });
-            resource.volume?.setVolume(volume / 100);
-        }
+        // Spawn FFmpeg with lower quality for smoother playback
+        const ffmpegProcess = spawn(ffmpegPath, [
+            '-i', 'pipe:0',
+            '-analyzeduration', '0',
+            '-loglevel', '0',
+            '-f', 's16le',
+            '-ar', '44100',
+            '-ac', '2',
+            '-b:a', '96k',
+            'pipe:1'
+        ], { stdio: ['pipe', 'pipe', 'ignore'] });
 
+        // Store FFmpeg process for cleanup
+        ffmpegProcesses.set(guildId, ffmpegProcess);
+
+        // Handle stream errors gracefully
+        streamInfo.stream.on('error', () => { });
+        ffmpegProcess.stdin.on('error', () => { });
+        ffmpegProcess.stdout.on('error', () => { });
+
+        // Pipe the audio stream through FFmpeg
+        streamInfo.stream.pipe(ffmpegProcess.stdin);
+
+        const resource = createAudioResource(ffmpegProcess.stdout, {
+            inputType: StreamType.Raw,
+            inlineVolume: true
+        });
+        resource.volume?.setVolume(session.volume / 100);
+
+        // Store resource for dynamic volume control
         resources.set(guildId, resource);
 
         const player = players.get(guildId);
@@ -305,9 +102,9 @@ async function playSong(guildId, client) {
             player.play(resource);
             console.log("Started playing!");
         }
+
     } catch (err) {
         console.error("Error playing song:", err.message || err);
-
         // Skip to next song on error
         session.currentIndex++;
         if (session.currentIndex >= session.queue.length) {
@@ -325,96 +122,113 @@ async function playSong(guildId, client) {
 function setVolume(guildId, volume) {
     const resource = resources.get(guildId);
     if (resource && resource.volume) {
-        const v = clampVolume(volume, VOLUME_CAP);
-        resource.volume.setVolume(v / 100);
+        resource.volume.setVolume(volume / 100);
         return true;
     }
     return false;
 }
 
-// ---- command ----
 module.exports = {
     name: "play",
-    description: "Play music from YouTube",
+    description: "Play music from SoundCloud",
     aliases: ["p"],
-
-    players,
-    connections,
-    resources,
-    idleTimeouts,
-    playSong,
-    setVolume,
-
     async execute(client, message, args) {
+        // Initialize SoundCloud if not ready
+        if (!soundcloudReady) {
+            const initialized = await initSoundCloud();
+            if (!initialized) {
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: failed to initialize SoundCloud. Please try again.`);
+                return message.reply({ embeds: [embed] });
+            }
+        }
+
         if (!message.member.voice.channel) {
-            const embed = new MessageEmbed()
-                .setColor(config.embedColor)
-                .setDescription(`❌ <@${message.author.id}>: you must be in a voice channel.`);
+            const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you must be in a voice channel.`);
             return message.reply({ embeds: [embed] });
         }
 
         const voiceChannel = message.member.voice.channel;
         const existingSession = await MusicSession.findOne({ guildId: message.guild.id });
 
-        // bot in use by someone else
+        // Check if bot is already in use by someone else
         if (existingSession && existingSession.ownerId !== message.author.id) {
             const isAdmin = message.member.permissions.has("ADMINISTRATOR");
             if (!isAdmin) {
-                const embed = new MessageEmbed()
-                    .setColor(config.embedColor)
-                    .setDescription(`❌ <@${message.author.id}>: the bot is currently being used by <@${existingSession.ownerId}>.`);
+                const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: the bot is currently being used by <@${existingSession.ownerId}>.`);
                 return message.reply({ embeds: [embed] });
             }
         }
 
         const query = args.join(" ");
         if (!query) {
-            const embed = new MessageEmbed()
-                .setColor(config.embedColor)
-                .setDescription(`❌ <@${message.author.id}>: please provide a song name or URL.`);
+            const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: please provide a song name or URL.`);
             return message.reply({ embeds: [embed] });
         }
 
-        const isUrl = query.startsWith("http://") || query.startsWith("https://");
+        // Check if it's a SoundCloud URL
+        const isSoundCloudUrl = query.includes("soundcloud.com");
 
         try {
             let songInfo;
 
-            if (isUrl) {
-                // Direct URL: try play-dl info, fallback to yt-dlp info
-                try {
-                    const info = await play.video_info(query);
-                    songInfo = {
-                        title: info.video_details.title,
-                        url: `https://www.youtube.com/watch?v=${info.video_details.videoId}`,
-                        duration: info.video_details.durationRaw,
-                        thumbnail: info.video_details.thumbnails[0]?.url,
-                        channel: info.video_details.channel?.name || "Unknown",
-                    };
-                } catch (e) {
-                    console.log("play-dl video_info failed, falling back to yt-dlp:", e?.message || e);
-                    songInfo = await getSongInfoViaYtDlp(query);
-                }
+            if (isSoundCloudUrl) {
+                // Direct SoundCloud URL
+                const info = await play.soundcloud(query);
+                songInfo = {
+                    title: info.name,
+                    url: info.url,
+                    duration: formatDuration(info.durationInSec),
+                    thumbnail: info.thumbnail,
+                    channel: info.user?.name || "Unknown"
+                };
             } else {
-                // Search YouTube
-                const searchEmbed = new MessageEmbed()
-                    .setColor(config.embedColor)
-                    .setDescription(`> 🔍 <@${message.author.id}>: searching for **${query}**...`);
-
+                // Search SoundCloud
+                const searchEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔍 <@${message.author.id}>: searching SoundCloud for **${query}**...`);
                 const searchMsg = await message.reply({ embeds: [searchEmbed] });
 
-                const results = await play.search(query, { limit: 10 });
+                const results = await play.search(query, {
+                    source: { soundcloud: 'tracks' },
+                    limit: 20  // Get more results to filter
+                });
+
                 if (!results || results.length === 0) {
-                    const embed = new MessageEmbed()
-                        .setColor(config.embedColor)
-                        .setDescription(`❌ <@${message.author.id}>: no results found.`);
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: no results found on SoundCloud.`);
                     return searchMsg.edit({ embeds: [embed] });
                 }
 
-                const options = results.map((video, index) => ({
-                    label: (video.title || "Unknown").substring(0, 100),
-                    description: `${video.channel?.name || "Unknown"} • ${video.durationRaw || "?:??"}`.substring(0, 100),
-                    value: index.toString(),
+                // Sort by relevance - prioritize exact title matches and verified artists
+                const queryLower = query.toLowerCase();
+                const sortedResults = results
+                    .map(track => {
+                        const titleLower = (track.name || track.title || "").toLowerCase();
+                        let score = 0;
+
+                        // Exact match gets highest score
+                        if (titleLower === queryLower) score += 100;
+
+                        // Title starts with query
+                        if (titleLower.startsWith(queryLower)) score += 50;
+
+                        // Title contains query
+                        if (titleLower.includes(queryLower)) score += 25;
+
+                        // Verified artist bonus
+                        if (track.user?.verified) score += 10;
+
+                        // More plays = more relevant (normalize to 0-10 range)
+                        if (track.playCount) score += Math.min(track.playCount / 100000, 10);
+
+                        return { track, score };
+                    })
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 10)  // Take top 10 most relevant
+                    .map(item => item.track);
+
+                // Create dropdown menu
+                const options = sortedResults.map((track, index) => ({
+                    label: (track.name || track.title || "Unknown").substring(0, 100),
+                    description: `${track.user?.name || track.channel?.name || "Unknown"} • ${formatDuration(track.durationInSec)}`.substring(0, 100),
+                    value: index.toString()
                 }));
 
                 const row = new MessageActionRow().addComponents(
@@ -430,30 +244,27 @@ module.exports = {
 
                 await searchMsg.edit({ embeds: [selectEmbed], components: [row] });
 
-                const filter = (i) => i.customId === "music_select" && i.user.id === message.author.id;
+                // Wait for selection
+                const filter = i => i.customId === "music_select" && i.user.id === message.author.id;
                 const collected = await searchMsg.awaitMessageComponent({ filter, time: 30000 }).catch(() => null);
 
                 if (!collected) {
-                    const embed = new MessageEmbed()
-                        .setColor(config.embedColor)
-                        .setDescription(`❌ <@${message.author.id}>: selection timed out.`);
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: selection timed out.`);
                     return searchMsg.edit({ embeds: [embed], components: [] });
                 }
 
-                const selectedIndex = parseInt(collected.values[0], 10);
-                const selected = results[selectedIndex];
-                await collected.deferUpdate();
-
-                const videoUrl = `https://www.youtube.com/watch?v=${selected.id}`;
+                const selectedIndex = parseInt(collected.values[0]);
+                const selected = sortedResults[selectedIndex];
 
                 songInfo = {
-                    title: selected.title || "Unknown",
-                    url: videoUrl,
-                    duration: selected.durationRaw || "?:??",
-                    thumbnail: selected.thumbnails?.[0]?.url || null,
-                    channel: selected.channel?.name || "Unknown",
+                    title: selected.name || selected.title || "Unknown",
+                    url: selected.url,
+                    duration: formatDuration(selected.durationInSec),
+                    thumbnail: selected.thumbnail,
+                    channel: selected.user?.name || selected.channel?.name || "Unknown"
                 };
 
+                await collected.deferUpdate();
                 await searchMsg.delete().catch(() => { });
             }
 
@@ -465,11 +276,12 @@ module.exports = {
                     guildId: message.guild.id,
                     adapterCreator: message.guild.voiceAdapterCreator,
                     selfDeaf: true,
-                    selfMute: false,
+                    selfMute: false
                 });
 
                 connections.set(message.guild.id, connection);
 
+                // Wait for connection to be ready
                 try {
                     await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
                     console.log("Voice connection ready!");
@@ -477,76 +289,64 @@ module.exports = {
                     console.error("Voice connection failed:", err);
                     connection.destroy();
                     connections.delete(message.guild.id);
-
-                    const embed = new MessageEmbed()
-                        .setColor(config.embedColor)
-                        .setDescription(`❌ <@${message.author.id}>: failed to connect to voice channel.`);
+                    const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: failed to connect to voice channel.`);
                     return message.reply({ embeds: [embed] });
                 }
 
-                const player = createAudioPlayer({
-                    behaviors: {
-                        noSubscriber: "pause",
-                        maxMissedFrames: Math.round(5000 / 20),
-                    },
-                });
-
+                const player = createAudioPlayer();
                 players.set(message.guild.id, player);
                 connection.subscribe(player);
 
-                player.on("stateChange", async (oldState, newState) => {
-                    console.log(`Player state: ${oldState.status} -> ${newState.status}`);
-                    if (newState.status !== AudioPlayerStatus.Idle) return;
+                // Handle player events
+                player.on(AudioPlayerStatus.Idle, async () => {
+                    const session = await MusicSession.findOne({ guildId: message.guild.id });
+                    if (!session) return;
 
-                    const s = await MusicSession.findOne({ guildId: message.guild.id });
-                    if (!s) return;
-
-                    if (s.loop === "song") {
+                    if (session.loop === 'song') {
                         playSong(message.guild.id, client);
-                        return;
-                    }
+                    } else {
+                        session.currentIndex++;
+                        if (session.currentIndex >= session.queue.length) {
+                            if (session.loop === 'queue') {
+                                session.currentIndex = 0;
+                            } else {
+                                // Queue finished - set 1 minute idle timeout
+                                session.queue = [];
+                                session.currentIndex = 0;
+                                await session.save();
 
-                    s.currentIndex++;
-                    if (s.currentIndex >= s.queue.length) {
-                        if (s.loop === "queue") {
-                            s.currentIndex = 0;
-                        } else {
-                            s.queue = [];
-                            s.currentIndex = 0;
-                            await s.save();
+                                const timeout = setTimeout(async () => {
+                                    console.log("Idle timeout - disconnecting...");
+                                    const conn = connections.get(message.guild.id);
+                                    if (conn) {
+                                        conn.destroy();
+                                        connections.delete(message.guild.id);
+                                    }
+                                    players.delete(message.guild.id);
+                                    resources.delete(message.guild.id);
+                                    idleTimeouts.delete(message.guild.id);
+                                    await MusicSession.deleteOne({ guildId: message.guild.id });
 
-                            const timeout = setTimeout(async () => {
-                                console.log("Idle timeout - disconnecting...");
-                                const conn = connections.get(message.guild.id);
-                                if (conn) {
-                                    conn.destroy();
-                                    connections.delete(message.guild.id);
-                                }
-                                players.delete(message.guild.id);
-                                resources.delete(message.guild.id);
-                                idleTimeouts.delete(message.guild.id);
-                                await MusicSession.deleteOne({ guildId: message.guild.id });
+                                    const textChannel = message.guild.channels.cache.get(session.textChannelId);
+                                    if (textChannel) {
+                                        const embed = new MessageEmbed()
+                                            .setColor(config.embedColor)
+                                            .setDescription(`> 👋 disconnected due to inactivity.`);
+                                        textChannel.send({ embeds: [embed] }).catch(() => { });
+                                    }
+                                }, 60000);
 
-                                const textChannel = message.guild.channels.cache.get(s.textChannelId);
-                                if (textChannel) {
-                                    const embed = new MessageEmbed()
-                                        .setColor(config.embedColor)
-                                        .setDescription(`> 👋 disconnected due to inactivity.`);
-                                    textChannel.send({ embeds: [embed] }).catch(() => { });
-                                }
-                            }, 60000);
-
-                            idleTimeouts.set(message.guild.id, timeout);
-                            return;
+                                idleTimeouts.set(message.guild.id, timeout);
+                                return;
+                            }
                         }
+                        await session.save();
+                        playSong(message.guild.id, client);
                     }
-
-                    await s.save();
-                    playSong(message.guild.id, client);
                 });
 
-                player.on("error", (error) => {
-                    console.error("Audio player error:", error);
+                player.on('error', error => {
+                    console.error('Audio player error:', error);
                 });
 
                 connection.on(VoiceConnectionStatus.Disconnected, async () => {
@@ -559,8 +359,6 @@ module.exports = {
                         connection.destroy();
                         connections.delete(message.guild.id);
                         players.delete(message.guild.id);
-                        resources.delete(message.guild.id);
-                        idleTimeouts.delete(message.guild.id);
                         await MusicSession.deleteOne({ guildId: message.guild.id });
                     }
                 });
@@ -574,9 +372,7 @@ module.exports = {
                     ownerId: message.author.id,
                     channelId: voiceChannel.id,
                     textChannelId: message.channel.id,
-                    queue: [songInfo],
-                    currentIndex: 0,
-                    volume: VOLUME_CAP,
+                    queue: [songInfo]
                 });
             } else {
                 session.queue.push(songInfo);
@@ -589,24 +385,36 @@ module.exports = {
                 const embed = new MessageEmbed()
                     .setColor(config.embedColor)
                     .setThumbnail(songInfo.thumbnail)
-                    .setDescription(
-                        `> 🎶 <@${message.author.id}>: now playing **${songInfo.title}**\n> Channel: **${songInfo.channel}** • Duration: **${songInfo.duration}**`
-                    );
+                    .setDescription(`> 🎶 <@${message.author.id}>: now playing **${songInfo.title}**\n> Artist: **${songInfo.channel}** • Duration: **${songInfo.duration}**`);
                 message.channel.send({ embeds: [embed] });
             } else {
                 const embed = new MessageEmbed()
                     .setColor(config.embedColor)
-                    .setDescription(
-                        `> ➕ <@${message.author.id}>: added **${songInfo.title}** to queue (position ${session.queue.length})`
-                    );
+                    .setDescription(`> ➕ <@${message.author.id}>: added **${songInfo.title}** to queue (position ${session.queue.length})`);
                 message.channel.send({ embeds: [embed] });
             }
+
         } catch (error) {
             console.error("Play command error:", error);
-            const embed = new MessageEmbed()
-                .setColor(config.embedColor)
-                .setDescription(`❌ <@${message.author.id}>: failed to play song.`);
+            const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: failed to play song.`);
             message.reply({ embeds: [embed] });
         }
-    },
+    }
 };
+
+// Helper function to format duration
+function formatDuration(seconds) {
+    if (!seconds) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Export utilities for other commands
+module.exports.players = players;
+module.exports.connections = connections;
+module.exports.resources = resources;
+module.exports.ffmpegProcesses = ffmpegProcesses;
+module.exports.idleTimeouts = idleTimeouts;
+module.exports.playSong = playSong;
+module.exports.setVolume = setVolume;

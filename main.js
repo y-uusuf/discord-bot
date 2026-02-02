@@ -1,5 +1,5 @@
 ﻿require("dotenv").config();
-
+process.env.FFMPEG_PATH = require('@ffmpeg-installer/ffmpeg').path;
 const { Client, Intents, MessageEmbed, WebhookClient } = require("discord.js");
 const mongoose = require("mongoose");
 const config = require("./config.json");
