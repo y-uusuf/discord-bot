@@ -41,13 +41,8 @@ module.exports = {
 
         await session.save();
 
-        const nextSong = session.queue[session.currentIndex];
-        const embed = new MessageEmbed()
-            .setColor(config.embedColor)
-            .setDescription(`> ⏭️ <@${message.author.id}>: skipped. Now playing **${nextSong.title}**`);
-        message.reply({ embeds: [embed] });
-
-        // Play next song
+        // React and play next song
+        message.react("👍");
         playSong(message.guild.id, client);
     }
 };

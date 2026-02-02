@@ -39,7 +39,6 @@ module.exports = {
         // Delete session
         await MusicSession.deleteOne({ guildId: message.guild.id });
 
-        const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 👋 <@${message.author.id}>: disconnected from voice channel.`);
-        message.reply({ embeds: [embed] });
+        message.react("👍");
     }
 };

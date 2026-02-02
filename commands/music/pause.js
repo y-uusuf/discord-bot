@@ -37,7 +37,6 @@ module.exports = {
         session.isPaused = true;
         await session.save();
 
-        const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> ⏸️ <@${message.author.id}>: paused.`);
-        message.reply({ embeds: [embed] });
+        message.react("👍");
     }
 };

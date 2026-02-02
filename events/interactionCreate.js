@@ -6,6 +6,136 @@ module.exports = {
     name: "interactionCreate",
     async execute(interaction, client) {
 
+        // Handle channel permission select menu
+        if (interaction.isSelectMenu() && interaction.customId.startsWith("ch_perm_select_")) {
+            if (!interaction.member.permissions.has("MANAGE_CHANNELS")) {
+                const embed = new MessageEmbed()
+                    .setColor(config.embedColor)
+                    .setDescription(`❌ <@${interaction.user.id}>: you need **Manage Channels** permission.`);
+                return interaction.reply({ embeds: [embed], ephemeral: true });
+            }
+
+            const [channelId, permission] = interaction.values[0].split("_");
+            const channel = interaction.guild.channels.cache.get(channelId);
+
+            if (!channel) {
+                const embed = new MessageEmbed()
+                    .setColor(config.embedColor)
+                    .setDescription(`❌ <@${interaction.user.id}>: channel not found.`);
+                return interaction.reply({ embeds: [embed], ephemeral: true });
+            }
+
+            // Store the selected permission and show Allow/Reset/Deny buttons
+            const embed = new MessageEmbed()
+                .setColor(config.embedColor)
+                .setDescription(`⚙️ <@${interaction.user.id}>: editing **${permission.replace(/_/g, " ")}** for <#${channel.id}>\n\nSelect an action:`);
+
+            const row = new MessageActionRow().addComponents(
+                new MessageButton().setCustomId(`ch_perm_allow_${channelId}_${permission}`).setLabel("Allow").setStyle("SUCCESS"),
+                new MessageButton().setCustomId(`ch_perm_reset_${channelId}_${permission}`).setLabel("Reset").setStyle("SECONDARY"),
+                new MessageButton().setCustomId(`ch_perm_deny_${channelId}_${permission}`).setLabel("Deny").setStyle("DANGER")
+            );
+
+            return interaction.update({ embeds: [embed], components: [row] });
+        }
+
+        // Handle channel permission buttons
+        if (interaction.isButton() && interaction.customId.startsWith("ch_perm_")) {
+            if (!interaction.member.permissions.has("MANAGE_CHANNELS")) {
+                const embed = new MessageEmbed()
+                    .setColor(config.embedColor)
+                    .setDescription(`❌ <@${interaction.user.id}>: you need **Manage Channels** permission.`);
+                return interaction.reply({ embeds: [embed], ephemeral: true });
+            }
+
+            const parts = interaction.customId.split("_");
+            const action = parts[2]; // allow, reset, or deny
+            const channelId = parts[3];
+            const permission = parts[4];
+
+            const channel = interaction.guild.channels.cache.get(channelId);
+            if (!channel) {
+                const embed = new MessageEmbed()
+                    .setColor(config.embedColor)
+                    .setDescription(`❌ <@${interaction.user.id}>: channel not found.`);
+                return interaction.update({ embeds: [embed], components: [] });
+            }
+
+            try {
+                let permValue;
+                let actionText;
+
+                switch (action) {
+                    case "allow":
+                        permValue = true;
+                        actionText = "allowed";
+                        break;
+                    case "deny":
+                        permValue = false;
+                        actionText = "denied";
+                        break;
+                    case "reset":
+                        permValue = null;
+                        actionText = "reset";
+                        break;
+                }
+
+                await channel.permissionOverwrites.edit(interaction.guild.id, { [permission]: permValue });
+
+                const embed = new MessageEmbed()
+                    .setColor(config.embedColor)
+                    .setDescription(`✅ <@${interaction.user.id}>: **${permission.replace(/_/g, " ")}** ${actionText} for <#${channel.id}>`);
+
+                return interaction.update({ embeds: [embed], components: [] });
+            } catch (err) {
+                const embed = new MessageEmbed()
+                    .setColor(config.embedColor)
+                    .setDescription(`❌ <@${interaction.user.id}>: failed to update permission.`);
+                return interaction.update({ embeds: [embed], components: [] });
+            }
+        }
+
+        // Handle activity confirmation buttons
+        if (interaction.isButton() && interaction.customId.startsWith("activity_")) {
+            const parts = interaction.customId.split("_");
+            const action = parts[1]; // confirm or cancel
+            const ownerId = parts[parts.length - 1];
+
+            if (interaction.user.id !== ownerId) {
+                return interaction.reply({ content: "This is not for you.", ephemeral: true });
+            }
+
+            if (action === "cancel") {
+                client.pendingActivity?.delete(interaction.user.id);
+                const embed = new MessageEmbed()
+                    .setColor(config.embedColor)
+                    .setDescription(`> ❌ <@${interaction.user.id}>: cancelled.`);
+                return interaction.update({ embeds: [embed], components: [] });
+            }
+
+            if (action === "confirm") {
+                const pending = client.pendingActivity?.get(interaction.user.id);
+                if (!pending) {
+                    const embed = new MessageEmbed()
+                        .setColor(config.embedColor)
+                        .setDescription(`❌ <@${interaction.user.id}>: activity request expired.`);
+                    return interaction.update({ embeds: [embed], components: [] });
+                }
+
+                client.user.setPresence({
+                    activities: [{ name: pending.name, type: "PLAYING" }],
+                    status: pending.status
+                });
+
+                client.pendingActivity.delete(interaction.user.id);
+
+                const embed = new MessageEmbed()
+                    .setColor(config.embedColor)
+                    .setDescription(`> ✅ <@${interaction.user.id}>: activity updated.`);
+                return interaction.update({ embeds: [embed], components: [] });
+            }
+        }
+
 
         if (!interaction.isButton() && !interaction.isModalSubmit()) return;
 
