@@ -695,7 +695,130 @@ client.login(process.env.DISCORD_TOKEN)
 
 const express = require("express");
 const app = express();
-app.get("/", (req, res) => res.send("Bot is running!"));
+
+// Serve static files from web folder
+app.use(express.static(path.join(__dirname, "web")));
+
+// API endpoint for bot status
+app.get("/api/status", (req, res) => {
+  const uptime = client.uptime ? Math.floor(client.uptime / 1000) : 0;
+  res.json({
+    online: client.isReady(),
+    serverCount: client.guilds?.cache.size || 0,
+    commandCount: client.commands?.size || 0,
+    uptime: uptime,
+    prefix: config.prefix,
+    botName: client.user?.username || "Discord Bot",
+    botAvatar: client.user?.displayAvatarURL({ dynamic: true, size: 256 }) || null
+  });
+});
+
+// API endpoint for commands list
+app.get("/api/commands", (req, res) => {
+  const categories = {
+    moderation: [],
+    utility: [],
+    fun: [],
+    music: [],
+    other: []
+  };
+
+  const modCmds = ['ban', 'kick', 'mute', 'unmute', 'role', 'lock', 'unlock', 'purge', 'warn', 'warns', 'removewarn', 'unban', 'deafen', 'undeafen', 'vmute', 'flag', 'invite', 'react', 'trial', 'nickname', 'slowmode', 'audit', 'blacklist'];
+  const utilCmds = ['afk', 'status', 'avatar', 'info', 'ping', 'help', 'snipe', 'clearsnipe', 'hook', 'reload', 'reset', 'set', 'channel', 'activity', 'add', 'vc'];
+  const funCmds = ['aura', 'confess', 'disc', 'mic'];
+  const musicCmds = ['play', 'pause', 'resume', 'skip', 'stop', 'queue', 'nowplaying', 'volume', 'repeat'];
+
+  const commandDescriptions = {
+    // Moderation
+    ban: { desc: "Ban a member from the server", usage: ",ban @user [reason]" },
+    kick: { desc: "Kick a member from the server", usage: ",kick @user [reason]" },
+    mute: { desc: "Mute a member so they cannot chat", usage: ",mute @user" },
+    unmute: { desc: "Unmute a muted member", usage: ",unmute @user" },
+    role: { desc: "Add or remove a role from a member", usage: ",role @user @role" },
+    lock: { desc: "Lock the current channel", usage: ",lock" },
+    unlock: { desc: "Unlock the current channel", usage: ",unlock" },
+    purge: { desc: "Delete multiple messages at once", usage: ",purge [amount]" },
+    warn: { desc: "Warn a member for rule violations", usage: ",warn @user [reason]" },
+    warns: { desc: "View warnings for a member", usage: ",warns @user" },
+    removewarn: { desc: "Remove a warning from a member", usage: ",removewarn @user [index]" },
+    unban: { desc: "Unban a previously banned user", usage: ",unban [user-id]" },
+    deafen: { desc: "Server deafen a member in voice", usage: ",deafen @user" },
+    undeafen: { desc: "Remove server deafen from a member", usage: ",undeafen @user" },
+    vmute: { desc: "Voice mute a member in voice channel", usage: ",vmute @user" },
+    flag: { desc: "Flag a user for review", usage: ",flag @user [reason]" },
+    invite: { desc: "Manage server invites", usage: ",invite" },
+    react: { desc: "React to a message or send emoji", usage: ",react [emoji] [message-id]" },
+    trial: { desc: "Start a trial session", usage: ",trial start/end" },
+    nickname: { desc: "Change a member's nickname", usage: ",nickname @user [name]" },
+    slowmode: { desc: "Set slowmode for a channel", usage: ",slowmode [duration]" },
+    audit: { desc: "View audit log entries", usage: ",audit" },
+    blacklist: { desc: "Blacklist a user from the bot", usage: ",blacklist @user" },
+    // Utility
+    afk: { desc: "Set your AFK status", usage: ",afk [reason]" },
+    status: { desc: "View bot or server status", usage: ",status" },
+    avatar: { desc: "Get a user's avatar", usage: ",avatar [@user]" },
+    info: { desc: "Get info about a user or server", usage: ",info [@user]" },
+    ping: { desc: "Check bot latency and API ping", usage: ",ping" },
+    help: { desc: "View all available commands", usage: ",help" },
+    snipe: { desc: "View recently deleted messages", usage: ",snipe" },
+    clearsnipe: { desc: "Clear sniped messages", usage: ",clearsnipe" },
+    hook: { desc: "Manage webhooks", usage: ",hook" },
+    reload: { desc: "Reload bot commands", usage: ",reload" },
+    reset: { desc: "Reset server settings", usage: ",reset" },
+    set: { desc: "Configure bot settings", usage: ",set [option] [value]" },
+    channel: { desc: "Manage channels", usage: ",channel" },
+    activity: { desc: "View user activity", usage: ",activity [@user]" },
+    add: { desc: "Add content or values", usage: ",add" },
+    vc: { desc: "Voice channel utilities", usage: ",vc" },
+    // Fun
+    aura: { desc: "View your aura level and stats", usage: ",aura [@user]" },
+    confess: { desc: "Send an anonymous confession", usage: ",confess [message]" },
+    disc: { desc: "Disconnect a user from voice", usage: ",disc @user" },
+    mic: { desc: "Toggle a user's mic permission", usage: ",mic @user" },
+    // Music
+    play: { desc: "Play music from SoundCloud", usage: ",play [song name or URL]", aliases: ["p"] },
+    pause: { desc: "Pause the current song", usage: ",pause" },
+    resume: { desc: "Resume the paused song", usage: ",resume" },
+    skip: { desc: "Skip to the next song", usage: ",skip" },
+    stop: { desc: "Stop playback and clear queue", usage: ",stop" },
+    queue: { desc: "View the music queue", usage: ",queue", aliases: ["q"] },
+    nowplaying: { desc: "Show the currently playing song", usage: ",nowplaying", aliases: ["np"] },
+    volume: { desc: "Adjust the playback volume", usage: ",volume [1-100]" },
+    repeat: { desc: "Toggle repeat mode", usage: ",repeat [off/song/queue]" }
+  };
+
+  // Build command list from actual registered commands
+  for (const [name, cmd] of client.commands.entries()) {
+    if (cmd.name !== name) continue; // Skip aliases
+
+    const info = commandDescriptions[name] || { desc: cmd.description || "No description", usage: `,${name}` };
+    const cmdData = {
+      name: name,
+      description: info.desc,
+      usage: info.usage,
+      aliases: cmd.aliases || info.aliases || []
+    };
+
+    if (modCmds.includes(name)) categories.moderation.push(cmdData);
+    else if (utilCmds.includes(name)) categories.utility.push(cmdData);
+    else if (funCmds.includes(name)) categories.fun.push(cmdData);
+    else if (musicCmds.includes(name)) categories.music.push(cmdData);
+    else categories.other.push(cmdData);
+  }
+
+  // Sort commands alphabetically in each category
+  for (const cat in categories) {
+    categories[cat].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  // Remove empty categories
+  for (const cat in categories) {
+    if (categories[cat].length === 0) delete categories[cat];
+  }
+
+  res.json({ categories });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT);
 

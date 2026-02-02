@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Guard - A feature-rich moderation and utility bot for your server">
+    <meta name="theme-color" content="#131416">
+    <title>@guard</title>
+    <link rel="icon" id="favicon" type="image/png" href="https://cdn.discordapp.com/embed/avatars/0.png">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-effects">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <main class="container">
+        <!-- Hero Section -->
+        <header class="hero">
+            <div class="hero-content">
+                <div class="bot-avatar">
+                    <div class="avatar-glow"></div>
+                    <img id="bot-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot Avatar">
+                    <span id="status-indicator" class="status-dot offline"></span>
+                </div>
+                <h1 id="bot-name">@guard</h1>
+                <p class="tagline">feature-rich moderation, music & utility.</p>
+                <a href="https://discord.com/oauth2/authorize?client_id=1465397285935517778&permissions=8&integration_type=0&scope=bot"
+                    class="cta-button">add me now.</a>
+                <div class="status-badge" id="status-badge">
+                    <span class="pulse"></span>
+                    <span id="status-text">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Section -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🏠</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="server-count">--</span>
+                    <span class="stat-label">servers.</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="command-count">--</span>
+                    <span class="stat-label">commands.</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="uptime">--</span>
+                    <span class="stat-label">uptime.</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📝</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="prefix">,</span>
+                    <span class="stat-label">prefix.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features">
+            <h2 class="section-title">features.</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">🛡️</span>
+                    <h3>anti-nuke.</h3>
+                    <p>protects against mass channel/role deletion and mass banning.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🚫</span>
+                    <h3>anti-spam.</h3>
+                    <p>automatically detects and warns spammers with message cleanup.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📈</span>
+                    <h3>leveling system.</h3>
+                    <p>earn aura points and level up by chatting in the server.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🎵</span>
+                    <h3>music player.</h3>
+                    <p>stream music from soundcloud with queue management.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Commands Section -->
+        <section class="commands">
+            <h2 class="section-title">commands.</h2>
+            <div class="command-categories" id="command-categories">
+                <!-- Commands will be injected here by JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
