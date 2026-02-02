@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+﻿require("dotenv").config({ debug: false });
 process.env.FFMPEG_PATH = require('@ffmpeg-installer/ffmpeg').path;
 const { Client, Intents, MessageEmbed, WebhookClient } = require("discord.js");
 const mongoose = require("mongoose");
@@ -14,9 +14,7 @@ const Blacklist = require("./models/blacklist");
 const fs = require("fs");
 const path = require("path");
 
-mongoose
-  .connect(process.env.MONGO_URI, {})
-  .then(() => console.log("✅ Successfully connected to database."));
+mongoose.connect(process.env.MONGO_URI, {});
 
 const client = new Client({
   intents: [
@@ -56,7 +54,6 @@ const countSchema = new mongoose.Schema({
 const Count = mongoose.model('Count', countSchema);
 
 client.once("ready", () => {
-  console.log("loaded commands, connected to database & logged into to the bot sucessfully.");
 
 
   client.guilds.cache.forEach(async (guild) => {
@@ -79,7 +76,7 @@ client.once("ready", () => {
 
 
   (async () => {
-    console.log("📄 Starting database cleanup...");
+
     const currentGuildIds = new Set(client.guilds.cache.keys());
 
 
@@ -87,7 +84,7 @@ client.once("ready", () => {
     for (const s of allSettings) {
       if (!currentGuildIds.has(s.guildId)) {
         await Settings.deleteOne({ _id: s._id });
-        console.log(`[PURGE] Removed settings for unknown guild: ${s.guildId}`);
+
       }
     }
 
@@ -96,7 +93,7 @@ client.once("ready", () => {
     for (const w of allWebhooks) {
       if (!currentGuildIds.has(w.guildId)) {
         await Webhook.deleteOne({ _id: w._id });
-        console.log(`[PURGE] Removed webhooks for unknown guild: ${w.guildId}`);
+
       }
     }
 
@@ -105,7 +102,7 @@ client.once("ready", () => {
     for (const gid of warnGuilds) {
       if (!currentGuildIds.has(gid)) {
         await Warn.deleteMany({ guildId: gid });
-        console.log(`[PURGE] Removed warnings for unknown guild: ${gid}`);
+
       }
     }
 
@@ -117,13 +114,13 @@ client.once("ready", () => {
         const channel = await client.channels.fetch(c.channelId).catch(() => null);
         if (!channel) {
           await Count.deleteOne({ _id: c._id });
-          console.log(`[PURGE] Removed count data for unknown channel: ${c.channelId}`);
+
         }
       } catch (e) {
 
       }
     }
-    console.log("✅ Database cleanup complete.");
+
   })();
 
   setInterval(async () => {
@@ -146,7 +143,7 @@ client.once("ready", () => {
         doc.jailedUntil = null;
         await doc.save();
 
-        console.log(`Unjailed ${member.user.tag}`);
+
       } catch (err) {
         console.warn(`Failed to unjail ${doc.userId}:`, err.message);
       }
@@ -159,7 +156,7 @@ client.once("ready", () => {
     .setTimestamp();
 
   const loginChannelId = process.env.LOGIN_CHANNEL_ID;
-  console.log("LOGIN_CHANNEL_ID:", loginChannelId);
+
   if (loginChannelId) {
     client.channels
       .fetch(loginChannelId)
@@ -277,7 +274,7 @@ client.on("messageCreate", async (message) => {
         lastUserId: null
       });
       await countData.save();
-      console.log(`[INFO] Created new count data for channel ${message.channel.id}`);
+
     }
 
     if (message.author.id === countData.lastUserId) {
@@ -688,24 +685,19 @@ client.on("guildBanAdd", async (ban) => {
   }
 });
 
-console.log("Checking DISCORD_TOKEN...");
 if (!process.env.DISCORD_TOKEN) {
-  console.error("❌ DISCORD_TOKEN is missing from environment variables!");
-} else {
-  console.log("✅ DISCORD_TOKEN is present.");
+  process.exit(1);
 }
 
-console.log("Attempting to login...");
 client.login(process.env.DISCORD_TOKEN)
-  .then(() => console.log("✅ client.login() promise resolved."))
-  .catch(err => console.error("❌ client.login() failed:", err));
+  .catch(() => process.exit(1));
 
 
 const express = require("express");
 const app = express();
 app.get("/", (req, res) => res.send("Bot is running!"));
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Express server listening on port ${PORT}`));
+app.listen(PORT);
 
 
 async function resetCount(message, countData, reason) {

@@ -7,7 +7,7 @@ const MusicSession = require("../../models/musicSession");
 
 // Configure FFmpeg path
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
-console.log("FFmpeg configured:", ffmpegPath);
+
 
 // SoundCloud initialization flag
 let soundcloudReady = false;
@@ -24,10 +24,10 @@ async function initSoundCloud() {
             }
         });
         soundcloudReady = true;
-        console.log("✅ SoundCloud initialized");
+
         return true;
     } catch (err) {
-        console.error("Failed to initialize SoundCloud:", err);
+
         return false;
     }
 }
@@ -59,7 +59,7 @@ async function playSong(guildId, client) {
         ffmpegProcesses.delete(guildId);
     }
 
-    console.log("Playing song:", song.title, "-", song.url);
+
 
     try {
         // Get the raw stream from play-dl
@@ -100,11 +100,11 @@ async function playSong(guildId, client) {
         const player = players.get(guildId);
         if (player) {
             player.play(resource);
-            console.log("Started playing!");
+
         }
 
     } catch (err) {
-        console.error("Error playing song:", err.message || err);
+
         // Skip to next song on error
         session.currentIndex++;
         if (session.currentIndex >= session.queue.length) {
@@ -284,9 +284,9 @@ module.exports = {
                 // Wait for connection to be ready
                 try {
                     await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-                    console.log("Voice connection ready!");
+
                 } catch (err) {
-                    console.error("Voice connection failed:", err);
+
                     connection.destroy();
                     connections.delete(message.guild.id);
                     const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: failed to connect to voice channel.`);
@@ -316,7 +316,7 @@ module.exports = {
                                 await session.save();
 
                                 const timeout = setTimeout(async () => {
-                                    console.log("Idle timeout - disconnecting...");
+
                                     const conn = connections.get(message.guild.id);
                                     if (conn) {
                                         conn.destroy();

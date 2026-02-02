@@ -27,14 +27,14 @@ module.exports = {
             prefix: { field: "prefix", name: "bot prefix", isString: true }
         };
 
-        
+
         if (!type) {
             const embed = new MessageEmbed()
                 .setColor(config.embedColor).setDescription(`⚙️ <@${message.author.id}>: configure server settings.\n\n**usage:** \`,set <type> <value>\`\n**example:** \`,set log #logs\`\n\n**roles:** mute, trialrole\n**channels:** log, welcome, confess, trial, counting, level\n**misc:** prefix, vc\n**other:** \`,set view\` or \`,set remove <type>\``);
             return message.reply({ embeds: [embed] });
         }
 
-        
+
         if (type === "view") {
             const config = await Settings.findOne({ guildId: message.guild.id });
             if (!config) {
@@ -55,7 +55,7 @@ module.exports = {
             return message.reply({ embeds: [embed] });
         }
 
-        
+
         if (type === "remove") {
             const removeType = args[1]?.toLowerCase();
 
@@ -77,7 +77,7 @@ module.exports = {
             return message.reply({ embeds: [embed] });
         }
 
-        
+
         if (!validTypes[type]) {
             const embed = new MessageEmbed()
                 .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: invalid type. use: ${Object.keys(validTypes).join(", ")}.`);
@@ -93,9 +93,9 @@ module.exports = {
         const setting = validTypes[type];
         let id;
 
-        
+
         if (setting?.special && type === "vc") {
-            
+
             if (!value) {
                 const embed = new MessageEmbed()
                     .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: please provide a text channel argument.`);
@@ -110,21 +110,21 @@ module.exports = {
                 return message.reply({ embeds: [embed] });
             }
 
-            
+
             try {
                 await targetTextChannel.permissionOverwrites.edit(message.guild.id, {
                     SEND_MESSAGES: false,
                     ADD_REACTIONS: false
                 });
             } catch (err) {
-                console.log("Failed to lock channel perms:", err);
+
             }
 
-            
+
             const category = targetTextChannel.parent;
 
             try {
-                
+
                 let j2cChannel = message.guild.channels.cache.find(c => c.name === "j2c" && c.type === "GUILD_VOICE");
 
                 if (!j2cChannel) {
@@ -134,13 +134,13 @@ module.exports = {
                         userLimit: 1
                     });
                 } else if (category && j2cChannel.parentId !== category.id) {
-                    
+
                     try { await j2cChannel.setParent(category.id); } catch (e) { }
                 }
 
-                id = j2cChannel.id; 
+                id = j2cChannel.id;
 
-                
+
                 const embed = new MessageEmbed()
                     .setColor(config.embedColor)
                     .setDescription("- this interface can be used to manage temporary voice channels.\n- you can do it also with typing '**,vc**'.\n\n> [✏️]: `change name.`\n> [👥]: `set user limit.`\n> [🔒]: `lock/unlock.`\n> [👻]: `hide/unhide.`\n> [➕]: `trust user.`\n> [➖]: `untrust user.`\n> [👢]: `kick user.`\n> [🚫]: `ban user.`\n> [👑]: `claim ownership.`\n> [🗑️]: `delete channel.`")
@@ -166,7 +166,7 @@ module.exports = {
                 await message.react("✅");
 
             } catch (error) {
-                console.error(error);
+
                 return message.reply("*failed to create/adopt channels or send interface.*");
             }
         } else if (setting.isString) {

@@ -54,8 +54,12 @@ module.exports = {
             return message.reply({ embeds: [embed] });
         }
 
-        const channel = message.guild.channels.cache.get(tempVoice.channelId);
-        if (!channel) {
+        // Fetch channel (more reliable than cache.get)
+        let channel;
+        try {
+            channel = await message.guild.channels.fetch(tempVoice.channelId);
+        } catch (err) {
+            // Channel truly doesn't exist
             await TempVoice.deleteOne({ ownerId: message.author.id });
             const embed = new MessageEmbed()
                 .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: your channel no longer exists`);
@@ -84,7 +88,7 @@ module.exports = {
                         });
                         message.react("👍");
                     } catch (err) {
-                        console.error("Status error:", err);
+
                         const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: failed to set status`);
                         message.reply({ embeds: [embed] });
                     }
@@ -271,7 +275,7 @@ module.exports = {
                     message.reply({ embeds: [embed] });
             }
         } catch (error) {
-            console.error(error);
+
             const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: failed to execute action`);
             message.reply({ embeds: [embed] });
         }

@@ -48,7 +48,7 @@ module.exports = {
                             textChannel.send({ embeds: [embed] }).catch(() => { });
                         }
                     } catch (err) {
-                        console.error("Music cleanup error:", err);
+
                     }
                 }
 
@@ -79,7 +79,7 @@ module.exports = {
 
                         await MusicSession.deleteOne({ guildId: oldState.guild.id });
                     } catch (err) {
-                        console.error("Music cleanup error:", err);
+
                     }
                 }
             }
@@ -141,7 +141,7 @@ module.exports = {
                 }).save();
 
             } catch (err) {
-                console.error("J2C Error:", err);
+
             }
         }
 
