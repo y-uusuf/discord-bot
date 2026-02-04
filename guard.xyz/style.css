@@ -1,0 +1,238 @@
+:root {
+    --bg-color: #050505;
+    --text-color: #e0e0e0;
+    --accent-color: #ff3333;
+    /* Bleed red */
+    --card-bg: rgba(20, 20, 20, 0.6);
+    --border-color: rgba(255, 51, 51, 0.2);
+    --hover-bg: rgba(255, 51, 51, 0.1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2rem;
+}
+
+/* Background Blobs */
+.background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.blob {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255, 51, 51, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+    filter: blur(80px);
+    animation: move 20s infinite alternate;
+}
+
+.blob:nth-child(2) {
+    right: -200px;
+    bottom: -200px;
+    animation-delay: -10s;
+    background: radial-gradient(circle, rgba(100, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
+}
+
+@keyframes move {
+    from {
+        transform: translate(0, 0);
+    }
+
+    to {
+        transform: translate(50px, 50px);
+    }
+}
+
+.container {
+    max-width: 900px;
+    width: 100%;
+    z-index: 1;
+}
+
+header {
+    margin-bottom: 4rem;
+    text-align: center;
+    animation: fadeIn 1s ease-out;
+}
+
+h1 {
+    font-size: 4rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    letter-spacing: -2px;
+    text-shadow: 0 0 20px rgba(255, 51, 51, 0.5);
+}
+
+.status {
+    font-size: 0.9rem;
+    color: #888;
+}
+
+#status-indicator {
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 4rem;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(255, 51, 51, 0.15);
+    border-color: var(--accent-color);
+}
+
+.stat-card h3 {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+    text-transform: lowercase;
+}
+
+.stat-card p {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+/* Commands Section */
+.commands-section {
+    margin-bottom: 4rem;
+}
+
+h2 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    letter-spacing: -1px;
+}
+
+#search {
+    width: 100%;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #fff;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+#search:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.command-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.command-item {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s;
+    cursor: default;
+}
+
+.command-item:hover {
+    background: var(--hover-bg);
+    border-color: var(--accent-color);
+}
+
+.command-name {
+    font-family: 'Courier New', monospace;
+    color: var(--accent-color);
+    font-weight: bold;
+    margin-bottom: 0.3rem;
+    display: block;
+}
+
+.command-desc {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+footer {
+    text-align: center;
+    margin-top: 4rem;
+    padding-bottom: 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+}
+
+footer a {
+    color: #666;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+footer a:hover {
+    color: var(--accent-color);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color);
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>guard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="background">
+        <div class="blob"></div>
+        <div class="blob"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>guard</h1>
+            <p class="status">status: <span id="status-indicator">checking...</span></p>
+        </header>
+
+        <section id="stats" class="stats-grid">
+            <div class="stat-card">
+                <h3>uptime</h3>
+                <p id="uptime">--</p>
+            </div>
+            <div class="stat-card">
+                <h3>ping</h3>
+                <p id="ping">-- ms</p>
+            </div>
+            <div class="stat-card">
+                <h3>servers</h3>
+                <p id="guilds">--</p>
+            </div>
+            <div class="stat-card">
+                <h3>users</h3>
+                <p id="users">--</p>
+            </div>
+        </section>
+
+        <section id="commands" class="commands-section">
+            <h2>commands</h2>
+            <input type="text" id="search" placeholder="search commands..." />
+            <div id="command-list" class="command-list">
+                <!-- Commands injected here -->
+            </div>
+        </section>
+
+        <footer>
+            <a href="https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&scope=bot&permissions=8"
+                target="_blank">invite</a>
+            <a href="https://discord.gg/support" target="_blank">support</a>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
