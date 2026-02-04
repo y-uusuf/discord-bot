@@ -715,7 +715,8 @@ app.get("/api/stats", (req, res) => {
     uptimeMs: client.uptime,
     guilds: client.guilds.cache.size,
     users: client.guilds.cache.reduce((a, g) => a + g.memberCount, 0),
-    ping: client.ws.ping
+    ping: client.ws.ping,
+    avatar: client.user.displayAvatarURL({ dynamic: true, size: 512 })
   });
 });
 

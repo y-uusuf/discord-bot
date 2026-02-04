@@ -4,6 +4,7 @@ const config = require("../../config.json");
 module.exports = {
   name: "avatar",
   aliases: ["av"],
+  description: "Displays a user's avatar.",
   async execute(client, message, args) {
     let user;
 

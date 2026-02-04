@@ -13,8 +13,14 @@ async function fetchData() {
         document.getElementById('ping').innerText = `${Math.round(stats.ping)} ms`;
         document.getElementById('guilds').innerText = stats.guilds;
         document.getElementById('users').innerText = stats.users.toLocaleString();
+
+        if (stats.avatar) {
+            document.getElementById('bot-icon').src = stats.avatar;
+        }
+
         statusEl.innerText = "online";
         statusEl.style.color = "#33ff33"; // Green
+        statusEl.style.textShadow = "0 0 10px #33ff33";
 
     } catch (error) {
         console.error("Stats Error:", error);

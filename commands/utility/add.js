@@ -3,6 +3,7 @@ const config = require("../../config.json");
 
 module.exports = {
     name: "add",
+    description: "Get the invite link for the bot.",
     async execute(client, message, args) {
         const embed = new MessageEmbed()
             .setColor(config.embedColor)

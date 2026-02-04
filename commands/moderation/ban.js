@@ -3,6 +3,7 @@ const config = require("../../config.json");
 
 module.exports = {
   name: "ban",
+  description: "Bans a member from the server.",
   async execute(client, message, args) {
     if (!message.member.permissions.has("BAN_MEMBERS")) {
       const embed = new MessageEmbed()
@@ -41,7 +42,7 @@ module.exports = {
       return message.reply({ embeds: [embed] });
     }
 
-    
+
     const confirmEmbed = new MessageEmbed()
       .setColor(config.embedColor).setDescription(`⚠️ <@${message.author.id}>: are you sure you want to ban **${userToBan.tag || userToBan.username}**? (reason: ${reason}).`);
 

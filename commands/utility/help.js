@@ -4,13 +4,14 @@ const Settings = require("../../models/settings");
 
 module.exports = {
   name: "help",
+  description: "Displays the help menu with all commands.",
   async execute(client, message, args) {
-    
+
     const commandList = Array.from(client.commands.entries())
       .filter(([key, cmd]) => cmd.name === key)
       .map(([key]) => key);
 
-    
+
     const settings = await Settings.findOne({ guildId: message.guild?.id });
     const prefix = settings?.prefix || ",";
 

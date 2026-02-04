@@ -3,6 +3,7 @@ const config = require("../../config.json");
 
 module.exports = {
     name: "kick",
+    description: "Kicks a member from the server.",
     async execute(client, message, args) {
         if (!message.member.permissions.has("KICK_MEMBERS")) {
             const embed = new MessageEmbed()
@@ -40,7 +41,7 @@ module.exports = {
             return message.reply({ embeds: [embed] });
         }
 
-        
+
         const confirmEmbed = new MessageEmbed()
             .setColor(config.embedColor).setDescription(`⚠️ <@${message.author.id}>: are you sure you want to kick **${userToKick.user.tag}**? (reason: ${reason})`);
 

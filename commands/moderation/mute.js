@@ -4,6 +4,7 @@ const Settings = require("../../models/settings");
 
 module.exports = {
     name: "mute",
+    description: "Mutes a member so they cannot chat.",
     async execute(client, message, args) {
         if (!message.member.permissions.has("MANAGE_ROLES")) {
             const embed = new MessageEmbed()
@@ -19,7 +20,7 @@ module.exports = {
             return message.reply({ embeds: [embed] });
         }
 
-        
+
         const settings = await Settings.findOne({ guildId: message.guild.id });
         const roleId = settings?.muteRole;
 

@@ -1,9 +1,10 @@
 const { MessageEmbed } = require("discord.js");
 const config = require("../../config.json");
-const Level = require("../../models/level"); 
+const Level = require("../../models/level");
 
 module.exports = {
   name: "aura",
+  description: "Check your aura level and points.",
   async execute(client, message, args) {
 
     let target =
