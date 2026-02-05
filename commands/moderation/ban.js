@@ -36,10 +36,20 @@ module.exports = {
     }
 
     const memberToBan = message.guild.members.cache.get(userToBan.id);
-    if (memberToBan && !memberToBan.bannable) {
-      const embed = new MessageEmbed()
-        .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: i can't ban them, maybe make my role higher?.`);
-      return message.reply({ embeds: [embed] });
+    if (memberToBan) {
+      if (!memberToBan.bannable) {
+        const embed = new MessageEmbed()
+          .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: i can't ban them, maybe make my role higher?.`);
+        return message.reply({ embeds: [embed] });
+      }
+
+      if (message.author.id !== message.guild.ownerId) {
+        if (message.member.roles.highest.position <= memberToBan.roles.highest.position) {
+          const embed = new MessageEmbed()
+            .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you need a higher role than **${userToBan.tag}** to ban them.`);
+          return message.reply({ embeds: [embed] });
+        }
+      }
     }
 
 

@@ -5,7 +5,7 @@ module.exports = (client) => {
     const loadedCommands = [];
     const commandsPath = path.join(__dirname, "../commands");
 
-    
+
     const readCommands = (dir) => {
         const files = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -15,10 +15,13 @@ module.exports = (client) => {
             } else if (file.name.endsWith(".js")) {
                 const command = require(path.join(dir, file.name));
                 if (command.name && typeof command.execute === "function") {
+                    const category = path.relative(commandsPath, dir).split(path.sep)[0];
+                    if (category) command.category = category;
+
                     client.commands.set(command.name, command);
                     loadedCommands.push(command.name);
 
-                    
+
                     if (command.aliases && Array.isArray(command.aliases)) {
                         for (const alias of command.aliases) {
                             client.commands.set(alias, command);

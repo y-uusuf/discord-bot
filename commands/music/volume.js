@@ -8,6 +8,7 @@ module.exports = {
     description: "Adjust the music volume",
     aliases: ["vol", "v"],
     async execute(client, message, args) {
+
         const session = await MusicSession.findOne({ guildId: message.guild.id });
 
         if (!session) {

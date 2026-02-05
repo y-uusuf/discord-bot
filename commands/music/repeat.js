@@ -5,7 +5,7 @@ const MusicSession = require("../../models/musicSession");
 module.exports = {
     name: "repeat",
     description: "Toggle repeat mode for the current song",
-    aliases: ["loop", "r"],
+    aliases: ["loop", "rp"],
     async execute(client, message, args) {
         const session = await MusicSession.findOne({ guildId: message.guild.id });
 

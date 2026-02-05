@@ -8,6 +8,7 @@ module.exports = {
     description: "Pause the current song",
     aliases: [],
     async execute(client, message, args) {
+
         const session = await MusicSession.findOne({ guildId: message.guild.id });
 
         if (!session) {

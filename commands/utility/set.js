@@ -24,13 +24,14 @@ module.exports = {
             counting: { field: "countingChannel", name: "counting channel", isChannel: true },
             level: { field: "levelChannel", name: "level channel", isChannel: true },
             vc: { field: "joinToCreateChannel", name: "vc interface", special: true },
+            dj: { field: "djRole", name: "dj role", isRole: true },
             prefix: { field: "prefix", name: "bot prefix", isString: true }
         };
 
 
         if (!type) {
             const embed = new MessageEmbed()
-                .setColor(config.embedColor).setDescription(`⚙️ <@${message.author.id}>: configure server settings.\n\n**usage:** \`,set <type> <value>\`\n**example:** \`,set log #logs\`\n\n**roles:** mute, trialrole\n**channels:** log, welcome, confess, trial, counting, level\n**misc:** prefix, vc\n**other:** \`,set view\` or \`,set remove <type>\``);
+                .setColor(config.embedColor).setDescription(`⚙️ <@${message.author.id}>: configure server settings.\n\n**usage:** \`,set <type> <value>\`\n**example:** \`,set log #logs\`\n\n**roles:** mute, trialrole, dj\n**channels:** log, welcome, confess, trial, counting, level\n**misc:** prefix, vc\n**other:** \`,set view\` or \`,set remove <type>\``);
             return message.reply({ embeds: [embed] });
         }
 
@@ -49,7 +50,8 @@ module.exports = {
             info += `**log channel:** ${config.logChannel ? `<#${config.logChannel}>` : "not set"}\n`;
             info += `**welcome channel:** ${config.welcomeChannel ? `<#${config.welcomeChannel}>` : "not set"}\n`;
             info += `**trial channel:** ${config.trialChannel ? `<#${config.trialChannel}>` : "not set"}\n`;
-            info += `**trial role:** ${config.trialRole ? `<@&${config.trialRole}>` : "not set"}.`;
+            info += `**trial role:** ${config.trialRole ? `<@&${config.trialRole}>` : "not set"}\n`;
+            info += `**dj role:** ${config.djRole ? `<@&${config.djRole}>` : "not set"}.`;
 
             const embed = new MessageEmbed().setColor(config.embedColor).setDescription(info);
             return message.reply({ embeds: [embed] });

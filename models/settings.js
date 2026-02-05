@@ -4,7 +4,8 @@ const settingsSchema = new mongoose.Schema({
     guildId: { type: String, required: true, unique: true },
     muteRole: { type: String, default: null },
     jailRole: { type: String, default: null },
-    
+    djRole: { type: String, default: null },
+
     flaggedWords: { type: [String], default: [] },
     flagLogPing: { type: String, default: null },
     savedWebhooks: { type: Map, of: String, default: {} },
