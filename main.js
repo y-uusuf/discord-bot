@@ -379,11 +379,15 @@ client.on("guildBanAdd", async (ban) => {
 });
 
 if (!process.env.DISCORD_TOKEN) {
+  console.error("FATAL: DISCORD_TOKEN is not set in the environment variables.");
   process.exit(1);
 }
 
 client.login(process.env.DISCORD_TOKEN)
-  .catch(() => process.exit(1));
+  .catch((err) => {
+    console.error("FATAL: Failed to login to Discord.", err);
+    process.exit(1);
+  });
 
 
 const express = require("express");
