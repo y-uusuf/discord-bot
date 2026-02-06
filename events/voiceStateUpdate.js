@@ -89,26 +89,32 @@ module.exports = {
         if (newState.channelId && newState.member && !newState.member.user.bot) {
             const joinedChannelId = newState.channelId; // Capture before kicking
             const tempVoice = await TempVoice.findOne({ channelId: joinedChannelId });
-            if (tempVoice && tempVoice.denyAll && newState.member.id !== tempVoice.ownerId) {
-                // Kick the user immediately
-                await newState.setChannel(null).catch(() => { });
 
-                // Send message
-                const { MessageEmbed } = require("discord.js");
-                const config = require("../config.json");
+            if (tempVoice) {
+                const isDenied = tempVoice.deniedUsers && tempVoice.deniedUsers.includes(newState.member.id);
+                const isNotOwner = newState.member.id !== tempVoice.ownerId;
 
-                // Find a text channel to notify
-                const textChannel = newState.guild.channels.cache.find(c =>
-                    c.type === 'GUILD_TEXT' && c.permissionsFor(newState.guild.me).has('SEND_MESSAGES')
-                );
+                if ((tempVoice.denyAll && isNotOwner) || isDenied) {
+                    // Kick the user immediately
+                    await newState.setChannel(null).catch(() => { });
 
-                if (textChannel) {
-                    const embed = new MessageEmbed()
-                        .setColor(config.embedColor)
-                        .setDescription(`> ❌ <@${newState.member.id}>: you're not allowed to join <#${joinedChannelId}>.`);
-                    textChannel.send({ embeds: [embed] }).catch(() => { });
+                    // Send message
+                    const { MessageEmbed } = require("discord.js");
+                    const config = require("../config.json");
+
+                    // Find a text channel to notify
+                    const textChannel = newState.guild.channels.cache.find(c =>
+                        c.type === 'GUILD_TEXT' && c.permissionsFor(newState.guild.me).has('SEND_MESSAGES')
+                    );
+
+                    if (textChannel) {
+                        const embed = new MessageEmbed()
+                            .setColor(config.embedColor)
+                            .setDescription(`> ❌ <@${newState.member.id}>: you're not allowed to join <#${joinedChannelId}>.`);
+                        textChannel.send({ embeds: [embed] }).catch(() => { });
+                    }
+                    return;
                 }
-                return;
             }
         }
 

@@ -22,18 +22,18 @@ module.exports = {
             return message.reply({ embeds: [embed] });
         }
 
-        // Kill FFmpeg process first to prevent EPIPE errors
-        if (ffmpegProcesses.has(message.guild.id)) {
-            const process = ffmpegProcesses.get(message.guild.id);
-            process.kill('SIGKILL');
-            ffmpegProcesses.delete(message.guild.id);
-        }
-
-        // Stop player
+        // Stop player first
         const player = players.get(message.guild.id);
         if (player) {
             player.stop();
             players.delete(message.guild.id);
+        }
+
+        // Kill FFmpeg process
+        if (ffmpegProcesses.has(message.guild.id)) {
+            const process = ffmpegProcesses.get(message.guild.id);
+            process.kill('SIGKILL');
+            ffmpegProcesses.delete(message.guild.id);
         }
 
         // Disconnect

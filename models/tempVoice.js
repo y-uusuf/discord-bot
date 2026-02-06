@@ -9,6 +9,7 @@ const tempVoiceSchema = new mongoose.Schema({
     limit: { type: Number, default: 0 },
     allowedUsers: { type: [String], default: [] },
     bannedUsers: { type: [String], default: [] },
+    deniedUsers: { type: [String], default: [] }, // Added deniedUsers
     denyAll: { type: Boolean, default: false }
 });
 

@@ -282,7 +282,8 @@ module.exports = {
                 await command.execute(client, message, args);
             } catch (error) {
                 console.error(error);
-                message.reply("*sorry, something went wrong running that command.*");
+                console.error(error);
+                message.reply("*sorry, something went wrong running that command.*").catch(() => { });
             }
             return;
         }

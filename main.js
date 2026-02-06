@@ -88,50 +88,49 @@ client.once("ready", () => {
 
 
   (async () => {
-
     const currentGuildIds = new Set(client.guilds.cache.keys());
 
+    // Parallelize Startup Cleanup Tasks
+    await Promise.all([
+      // 1. Settings Cleanup
+      (async () => {
+        const allSettings = await Settings.find({});
+        const deletes = allSettings
+          .filter(s => !currentGuildIds.has(s.guildId))
+          .map(s => Settings.deleteOne({ _id: s._id }));
+        await Promise.all(deletes);
+      })(),
 
-    const allSettings = await Settings.find({});
-    for (const s of allSettings) {
-      if (!currentGuildIds.has(s.guildId)) {
-        await Settings.deleteOne({ _id: s._id });
+      // 2. Webhook Cleanup
+      (async () => {
+        const allWebhooks = await Webhook.find({});
+        const deletes = allWebhooks
+          .filter(w => !currentGuildIds.has(w.guildId))
+          .map(w => Webhook.deleteOne({ _id: w._id }));
+        await Promise.all(deletes);
+      })(),
 
-      }
-    }
+      // 3. Warn Cleanup
+      (async () => {
+        const warnGuilds = await Warn.distinct("guildId");
+        const deletes = warnGuilds
+          .filter(gid => !currentGuildIds.has(gid))
+          .map(gid => Warn.deleteMany({ guildId: gid }));
+        await Promise.all(deletes);
+      })(),
 
-
-    const allWebhooks = await Webhook.find({});
-    for (const w of allWebhooks) {
-      if (!currentGuildIds.has(w.guildId)) {
-        await Webhook.deleteOne({ _id: w._id });
-
-      }
-    }
-
-
-    const warnGuilds = await Warn.distinct("guildId");
-    for (const gid of warnGuilds) {
-      if (!currentGuildIds.has(gid)) {
-        await Warn.deleteMany({ guildId: gid });
-
-      }
-    }
-
-
-    const allCounts = await Count.find({});
-    for (const c of allCounts) {
-      try {
-
-        const channel = await client.channels.fetch(c.channelId).catch(() => null);
-        if (!channel) {
-          await Count.deleteOne({ _id: c._id });
-
-        }
-      } catch (e) {
-
-      }
-    }
+      // 4. Count Channel Cleanup
+      (async () => {
+        const allCounts = await Count.find({});
+        const checks = allCounts.map(async (c) => {
+          try {
+            const channel = await client.channels.fetch(c.channelId).catch(() => null);
+            if (!channel) await Count.deleteOne({ _id: c._id });
+          } catch (e) { }
+        });
+        await Promise.all(checks);
+      })()
+    ]);
 
   })();
 
@@ -177,6 +176,40 @@ client.once("ready", () => {
   } else {
     console.warn("LOGIN_CHANNEL_ID not set in .env");
   }
+
+  const TempVoice = require("./models/tempVoice");
+
+  // Startup: Clean up Temp VCs
+  (async () => {
+    const tempChannels = await TempVoice.find({});
+    for (const temp of tempChannels) {
+      const channel = await client.channels.fetch(temp.channelId).catch(() => null);
+      if (!channel) {
+        await TempVoice.deleteOne({ _id: temp._id });
+        continue;
+      }
+
+      if (channel.members.size === 0) {
+        await channel.delete().catch(() => { });
+        await TempVoice.deleteOne({ _id: temp._id });
+      }
+    }
+  })();
+
+  // Periodic: Clear snipes older than 1 hour
+  setInterval(() => {
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+
+    client.snipes.forEach((snipes, channelId) => {
+      const freshSnipes = snipes.filter(s => s.timestamp > oneHourAgo);
+
+      if (freshSnipes.length === 0) {
+        client.snipes.delete(channelId);
+      } else if (freshSnipes.length < snipes.length) {
+        client.snipes.set(channelId, freshSnipes);
+      }
+    });
+  }, 5 * 60 * 1000); // Check every 5 minutes
 
   // Check if .local file exists to indicate development mode
   const isLocalDev = fs.existsSync(path.join(__dirname, '.local'));

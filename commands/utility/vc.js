@@ -174,27 +174,67 @@ module.exports = {
                         return message.reply({ embeds: [embed] });
                     }
 
-                    // Handle "deny @user" - remove specific user's trust
+                    // Handle "deny @user" - add to denied list and kick
                     const userToDeny = message.mentions.users.first() || client.users.cache.get(args[1]);
                     if (!userToDeny) {
                         const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: use \`,vc deny @user\` or \`,vc deny all\``);
                         return message.reply({ embeds: [embed] });
                     }
-                    await channel.permissionOverwrites.delete(userToDeny.id);
+
+                    // Add to denied list
+                    if (!tempVoice.deniedUsers) tempVoice.deniedUsers = [];
+                    if (!tempVoice.deniedUsers.includes(userToDeny.id)) {
+                        tempVoice.deniedUsers.push(userToDeny.id);
+                    }
+
+                    // Remove from allowed list if present
                     tempVoice.allowedUsers = tempVoice.allowedUsers.filter(id => id !== userToDeny.id);
                     await tempVoice.save();
+
+                    // Remove explicit permission if any (or set explicit deny if needed, but we use logic in voiceStateUpdate)
+                    // For robustness, we can set CONNECT: false specifically for them
+                    await channel.permissionOverwrites.edit(userToDeny.id, { CONNECT: false });
+
+                    // Kick if in channel
+                    const memberToDeny = channel.members.get(userToDeny.id);
+                    if (memberToDeny) {
+                        await memberToDeny.voice.setChannel(null).catch(() => { });
+                    }
+
                     message.react("👍");
                     break;
 
                 case "allow":
-                    // Disable deny all mode
-                    if (args[1]?.toLowerCase() === "all") {
+                    const allowTarget = args[1]?.toLowerCase();
+
+                    // Helper to clear deny/ban lists for a user
+                    const clearRestrictions = async (userId) => {
+                        if (tempVoice.deniedUsers) {
+                            tempVoice.deniedUsers = tempVoice.deniedUsers.filter(id => id !== userId);
+                        }
+                        if (tempVoice.bannedUsers) {
+                            tempVoice.bannedUsers = tempVoice.bannedUsers.filter(id => id !== userId);
+                        }
+                        await tempVoice.save();
+                        // Remove the specific overwrite causing the block
+                        await channel.permissionOverwrites.delete(userId).catch(() => { });
+                    };
+
+                    if (allowTarget === "all") {
                         tempVoice.denyAll = false;
                         await tempVoice.save();
                         const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔓 <@${message.author.id}>: deny all disabled. people can join again.`);
                         return message.reply({ embeds: [embed] });
                     }
-                    message.react("👍");
+
+                    const userToAllow = message.mentions.users.first() || client.users.cache.get(args[1]);
+                    if (userToAllow) {
+                        await clearRestrictions(userToAllow.id);
+                        message.react("👍");
+                    } else {
+                        const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: use \`,vc allow @user\` or \`,vc allow all\``);
+                        return message.reply({ embeds: [embed] });
+                    }
                     break;
 
                 case "kick":

@@ -65,7 +65,7 @@ async function playSong(guildId, client) {
         // Get the raw stream from play-dl
         const streamInfo = await play.stream(song.url);
 
-        // Spawn FFmpeg with lower quality for smoother playback
+        // Spawn FFmpeg with higher quality
         const ffmpegProcess = spawn(ffmpegPath, [
             '-i', 'pipe:0',
             '-analyzeduration', '0',
@@ -73,7 +73,7 @@ async function playSong(guildId, client) {
             '-f', 's16le',
             '-ar', '48000',
             '-ac', '2',
-            '-b:a', '96k',
+            '-b:a', '192k',
             'pipe:1'
         ], { stdio: ['pipe', 'pipe', 'ignore'] });
 
@@ -82,7 +82,12 @@ async function playSong(guildId, client) {
 
         // Handle stream errors gracefully
         streamInfo.stream.on('error', (err) => { console.error("Stream Error:", err); });
-        ffmpegProcess.stdin.on('error', (err) => { console.error("FFmpeg Stdin Error:", err); });
+
+        ffmpegProcess.stdin.on('error', (err) => {
+            if (err.code === 'EPIPE') return; // Ignore EPIPE when stopping
+            console.error("FFmpeg Stdin Error:", err);
+        });
+
         ffmpegProcess.stdout.on('error', (err) => { console.error("FFmpeg Stdout Error:", err); });
         ffmpegProcess.on('close', (code) => { if (code !== 0) console.error("FFmpeg exited with code:", code); });
 
@@ -101,11 +106,10 @@ async function playSong(guildId, client) {
         const player = players.get(guildId);
         if (player) {
             player.play(resource);
-
         }
 
     } catch (err) {
-
+        console.error("Error in playSong:", err);
         // Skip to next song on error
         session.currentIndex++;
         if (session.currentIndex >= session.queue.length) {
@@ -182,6 +186,7 @@ module.exports = {
                     thumbnail: info.thumbnail,
                     channel: info.user?.name || "Unknown"
                 };
+                message.react("👍").catch(() => { });
             } else {
                 // Search SoundCloud
                 const searchEmbed = new MessageEmbed().setColor(config.embedColor).setDescription(`> 🔍 <@${message.author.id}>: searching SoundCloud for **${query}**...`);
@@ -267,6 +272,7 @@ module.exports = {
 
                 await collected.deferUpdate();
                 await searchMsg.delete().catch(() => { });
+                message.react("👍").catch(() => { });
             }
 
             // Join voice channel if not already connected
