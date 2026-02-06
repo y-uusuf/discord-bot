@@ -1,5 +1,12 @@
 ﻿require("dotenv").config({ debug: false });
 process.env.FFMPEG_PATH = require('@ffmpeg-installer/ffmpeg').path;
+
+// Suppress punycode deprecation warning
+process.removeAllListeners('warning');
+process.on('warning', (warning) => {
+  if (warning.name === 'DeprecationWarning' && warning.message.includes('punycode')) return;
+  console.warn(warning);
+});
 const { Client, Intents, MessageEmbed, WebhookClient } = require("discord.js");
 const mongoose = require("mongoose");
 const config = require("./config.json");
@@ -48,8 +55,18 @@ const loadedEvents = require("./handler/eventHandler")(client);
 
 const Count = require("./models/count");
 
-client.once("ready", () => {
+const MusicSession = require("./models/musicSession");
 
+client.once("ready", () => {
+  // Clear all music sessions on startup
+  (async () => {
+    try {
+      await MusicSession.deleteMany({});
+      console.log("Cleared all music sessions.");
+    } catch (err) {
+      console.error("Failed to clear music sessions:", err);
+    }
+  })();
 
   client.guilds.cache.forEach(async (guild) => {
     try {
@@ -396,7 +413,12 @@ const app = express();
 
 app.use(cors());
 
-app.get("/", (req, res) => res.send("Bot is running!"));
+app.use(cors());
+app.use(express.static(path.join(__dirname, "site")));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "site", "index.html"));
+});
 
 app.get("/api/stats", (req, res) => {
   const formatUptime = (ms) => {
@@ -424,7 +446,8 @@ app.get("/api/commands", (req, res) => {
       commands.push({
         name: cmd.name,
         aliases: cmd.aliases || [],
-        description: cmd.description || "No description provided."
+        description: cmd.description || "No description provided.",
+        category: cmd.category || "General"
       });
     }
   });

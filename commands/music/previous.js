@@ -1,12 +1,12 @@
 const { MessageEmbed } = require("discord.js");
 const config = require("../../config.json");
 const MusicSession = require("../../models/musicSession");
-const { players, connections, ffmpegProcesses } = require("./play");
+const { players, playSong } = require("./play");
 
 module.exports = {
-    name: "stop",
-    description: "Stop playing and disconnect from voice channel",
-    aliases: ["dc", "disconnect", "leave"],
+    name: "previous",
+    description: "Play the previous song",
+    aliases: ["back", "rev"],
     async execute(client, message, args) {
         const session = await MusicSession.findOne({ guildId: message.guild.id });
 
@@ -22,30 +22,23 @@ module.exports = {
             return message.reply({ embeds: [embed] });
         }
 
-        // Kill FFmpeg process first to prevent EPIPE errors
-        if (ffmpegProcesses.has(message.guild.id)) {
-            const process = ffmpegProcesses.get(message.guild.id);
-            process.kill('SIGKILL');
-            ffmpegProcesses.delete(message.guild.id);
-        }
-
-        // Stop player
         const player = players.get(message.guild.id);
-        if (player) {
-            player.stop();
-            players.delete(message.guild.id);
+        if (!player) {
+            const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: no music is currently playing.`);
+            return message.reply({ embeds: [embed] });
         }
 
-        // Disconnect
-        const connection = connections.get(message.guild.id);
-        if (connection) {
-            connection.destroy();
-            connections.delete(message.guild.id);
+        // Move to previous song
+        if (session.currentIndex <= 0) {
+            const embed = new MessageEmbed().setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: no previous song to play.`);
+            return message.reply({ embeds: [embed] });
         }
 
-        // Delete session
-        await MusicSession.deleteOne({ guildId: message.guild.id });
+        session.currentIndex--;
+        await session.save();
 
+        // React and play previous song
         message.react("👍");
+        playSong(message.guild.id, client);
     }
 };

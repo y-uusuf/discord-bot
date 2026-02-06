@@ -71,7 +71,7 @@ async function playSong(guildId, client) {
             '-analyzeduration', '0',
             '-loglevel', '0',
             '-f', 's16le',
-            '-ar', '44100',
+            '-ar', '48000',
             '-ac', '2',
             '-b:a', '96k',
             'pipe:1'
@@ -81,9 +81,10 @@ async function playSong(guildId, client) {
         ffmpegProcesses.set(guildId, ffmpegProcess);
 
         // Handle stream errors gracefully
-        streamInfo.stream.on('error', () => { });
-        ffmpegProcess.stdin.on('error', () => { });
-        ffmpegProcess.stdout.on('error', () => { });
+        streamInfo.stream.on('error', (err) => { console.error("Stream Error:", err); });
+        ffmpegProcess.stdin.on('error', (err) => { console.error("FFmpeg Stdin Error:", err); });
+        ffmpegProcess.stdout.on('error', (err) => { console.error("FFmpeg Stdout Error:", err); });
+        ffmpegProcess.on('close', (code) => { if (code !== 0) console.error("FFmpeg exited with code:", code); });
 
         // Pipe the audio stream through FFmpeg
         streamInfo.stream.pipe(ffmpegProcess.stdin);

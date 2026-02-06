@@ -6,12 +6,10 @@ module.exports = {
     aliases: ["cs"],
     async execute(client, message, args) {
         if (!client.snipes) {
-            const embed = new MessageEmbed()
-                .setColor(config.embedColor).setDescription(`🗑️ <@${message.author.id}>: snipes cleared`);
-            return message.reply({ embeds: [embed] });
+            return message.react("👍");
         }
 
-        
+
         for (const [channelId, snipes] of client.snipes) {
             const channel = message.guild.channels.cache.get(channelId);
             if (channel) {
@@ -19,8 +17,6 @@ module.exports = {
             }
         }
 
-        const embed = new MessageEmbed()
-            .setColor(config.embedColor).setDescription(`🗑️ <@${message.author.id}>: snipes cleared`);
-        return message.reply({ embeds: [embed] });
+        return message.react("👍");
     },
 };

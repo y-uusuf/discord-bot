@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>discord bot</title>
+    <link rel="icon" type="image/png" id="favicon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Using Outfit for a softer, more rounded geometric look -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.05);
+            --text-main: #ffffff;
+            --text-dim: #999999;
+            --accent: #e5e5e5;
+            --glow: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+            /* Soft font */
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) var(--bg);
+        }
+
+        html,
+        body {
+            overflow-x: hidden;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.02) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 40%);
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            padding: 2rem;
+            animation: fadeIn 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+            margin-top: 3rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .bot-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.05);
+            animation: float 6s ease-in-out infinite;
+            filter: grayscale(100%);
+            transition: all 0.5s ease;
+        }
+
+        .bot-avatar:hover {
+            filter: grayscale(0%);
+            transform: scale(1.05);
+            box-shadow: 0 0 60px rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        h1 {
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            font-size: 2.2rem;
+            color: var(--text-main);
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 4rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 16px;
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+            transform: translateX(-100%);
+            transition: 0.5s;
+        }
+
+        .stat-card:hover::before {
+            transform: translateX(100%);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            background: linear-gradient(to bottom, #fff, #aaa);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+
+        .search-container {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 1.2rem 1.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        input[type="text"]:focus {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
+        }
+
+        .categories {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        details {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        details:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        summary {
+            padding: 1.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            list-style: none;
+            font-size: 1.1rem;
+            letter-spacing: 0.02em;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        summary::after {
+            content: '+';
+            font-weight: 300;
+            font-size: 1.5rem;
+            color: var(--text-dim);
+            transition: transform 0.4s ease;
+        }
+
+        details[open] summary::after {
+            transform: rotate(45deg);
+            color: var(--accent);
+        }
+
+        details[open] {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .category-content {
+            padding: 0 1.5rem 1.5rem 1.5rem;
+            display: grid;
+            gap: 0.8rem;
+            animation: slideDown 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .cmd-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .cmd-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.05);
+            transform: scale(1.01);
+        }
+
+        .cmd-name {
+            font-weight: 500;
+            color: var(--accent);
+            font-size: 0.95rem;
+        }
+
+        .cmd-desc {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            text-align: right;
+            opacity: 0.7;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .bot-avatar {
+                width: 100px;
+                height: 100px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <img src="" alt="Bot Avatar" class="bot-avatar" id="botAvatar" style="display: none;">
+            <h1 id="botName" style="margin-bottom: 0.2rem;">@guard</h1>
+            <p style="color: var(--text-dim); font-size: 1.1rem; font-weight: 300;">your all in one bot.</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="serverCount">--</div>
+                <div class="stat-label">Servers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="userCount">--</div>
+                <div class="stat-label">Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="ping">--</div>
+                <div class="stat-label">Ping</div>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search for a command...">
+        </div>
+
+        <div class="categories" id="categoriesList">
+            <div style="text-align: center; color: var(--text-dim);">Fetching commands...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://discord-bot-o1ro.onrender.com/api';
+
+        async function fetchStats() {
+            try {
+                const res = await fetch(`${API_BASE}/stats`);
+                const data = await res.json();
+
+                document.getElementById('serverCount').innerText = data.guilds;
+                document.getElementById('userCount').innerText = data.users;
+                document.getElementById('ping').innerText = `${Math.round(data.ping)}ms`;
+
+                // Update Avatar and Title only once if hidden
+                const avatarImg = document.getElementById('botAvatar');
+                if (avatarImg.style.display === 'none' && data.avatar) {
+                    avatarImg.src = data.avatar;
+                    avatarImg.style.display = 'block';
+
+                    // Set Favicon
+                    const favicon = document.getElementById('favicon');
+                    favicon.href = data.avatar;
+
+                    // Bot Name - Kept static as requested
+                    // document.getElementById('botName').innerText = 'operations active';
+                }
+            } catch (err) {
+                console.error("Stats Error:", err);
+            }
+        }
+
+        async function fetchCommands() {
+            try {
+                const res = await fetch(`${API_BASE}/commands`);
+                const commands = await res.json();
+                renderCommands(commands);
+            } catch (err) {
+                console.error("Commands Error:", err);
+                document.getElementById('categoriesList').innerHTML = '<div style="text-align:center; color: #ff5555;">Server offline or unreachable.</div>';
+            }
+        }
+
+        function renderCommands(commands) {
+            const container = document.getElementById('categoriesList');
+            container.innerHTML = '';
+
+            const commandCategories = {
+                // Fun
+                "aura": "fun", "confess": "fun", "mic": "fun", "react": "fun", "trial": "fun",
+                // Moderation
+                "ban": "moderation", "blacklist": "moderation", "flag": "moderation", "kick": "moderation", "lock": "moderation",
+                "mute": "moderation", "removewarn": "moderation", "unban": "moderation", "unlock": "moderation", "unmute": "moderation",
+                "warn": "moderation", "warns": "moderation",
+                // Music
+                "nowplaying": "music", "pause": "music", "play": "music", "previous": "music", "queue": "music",
+                "repeat": "music", "resume": "music", "skip": "music", "stop": "music", "volume": "music",
+                // Utility
+                "activity": "utility", "add": "utility", "afk": "utility", "audit": "utility", "avatar": "utility",
+                "channel": "utility", "clearsnipe": "utility", "deafen": "utility", "disc": "utility", "help": "utility",
+                "hook": "utility", "info": "utility", "invite": "utility", "nickname": "utility", "ping": "utility",
+                "purge": "utility", "reload": "utility", "reset": "utility", "role": "utility", "set": "utility",
+                "slowmode": "utility", "snipe": "utility", "status": "utility", "undeafen": "utility", "vc": "utility", "vmute": "utility"
+            };
+
+            const categories = {};
+            commands.forEach(cmd => {
+                let cat = commandCategories[cmd.name] || cmd.category || 'Utility';
+                if (cat.toLowerCase() === 'general') cat = 'Utility';
+
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push(cmd);
+            });
+
+            const sortedCats = Object.keys(categories).sort();
+
+            const categoryIcons = {
+                'fun': '🎮',
+                'moderation': '🛡️',
+                'music': '🎵',
+                'utility': '🛠️',
+                'general': '📄'
+            };
+
+            sortedCats.forEach(catName => {
+                const details = document.createElement('details');
+                const summary = document.createElement('summary');
+
+                // Capitalize first letter & Add Icon
+                const icon = categoryIcons[catName] || '📂';
+                const formattedName = catName.charAt(0).toUpperCase() + catName.slice(1);
+                summary.innerText = `${icon} ${formattedName}`;
+
+                const content = document.createElement('div');
+                content.className = 'category-content';
+
+                categories[catName].forEach(cmd => {
+                    const item = document.createElement('div');
+                    item.className = 'cmd-item';
+
+                    const left = document.createElement('div');
+                    const name = document.createElement('div');
+                    name.className = 'cmd-name';
+                    name.innerText = cmd.name;
+                    left.appendChild(name);
+
+                    const desc = document.createElement('div');
+                    desc.className = 'cmd-desc';
+                    desc.innerText = cmd.description.toLowerCase();
+
+                    item.appendChild(left);
+                    item.appendChild(desc);
+                    content.appendChild(item);
+                });
+
+                details.appendChild(summary);
+                details.appendChild(content);
+                container.appendChild(details);
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const details = document.querySelectorAll('details');
+
+            details.forEach(detail => {
+                const items = detail.querySelectorAll('.cmd-item');
+                let hasMatch = false;
+
+                items.forEach(item => {
+                    const text = item.innerText.toLowerCase();
+                    if (text.includes(term)) {
+                        item.style.display = 'flex';
+                        hasMatch = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                if (hasMatch) {
+                    detail.style.display = 'block';
+                    if (term.length > 0) detail.open = true;
+                } else {
+                    detail.style.display = 'none';
+                }
+            });
+        });
+
+        fetchStats();
+        fetchCommands();
+        setInterval(fetchStats, 5000);
+    </script>
+    <div id="particles-js" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;"></div>
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS("particles-js", {
+            "particles": {
+                "number": {
+                    "value": 150, // "A lot"
+                    "density": {
+                        "enable": true,
+                        "value_area": 800
+                    }
+                },
+                "color": {
+                    "value": "#ffffff"
+                },
+                "shape": {
+                    "type": "circle"
+                },
+                "opacity": {
+                    "value": 0.5,
+                    "random": true,
+                    "anim": {
+                        "enable": false
+                    }
+                },
+                "size": {
+                    "value": 2, // "Small"
+                    "random": true,
+                    "anim": {
+                        "enable": false
+                    }
+                },
+                "line_linked": {
+                    "enable": false
+                },
+                "move": {
+                    "enable": true,
+                    "speed": 2, // Falling speed
+                    "direction": "bottom", // Falling
+                    "random": false,
+                    "straight": false,
+                    "out_mode": "out",
+                    "bounce": false,
+                }
+            },
+            "interactivity": {
+                "detect_on": "canvas",
+                "events": {
+                    "onhover": {
+                        "enable": true,
+                        "mode": "attract" // Follows cursor
+                    },
+                    "onclick": {
+                        "enable": true,
+                        "mode": "repulse"
+                    },
+                    "resize": true
+                },
+                "modes": {
+                    "attract": {
+                        "distance": 300,
+                        "duration": 0.4,
+                        "speed": 5 // Attraction speed
+                    },
+                    "repulse": {
+                        "distance": 200,
+                        "duration": 0.4
+                    }
+                }
+            },
+            "retina_detect": true
+        });
+    </script>
+</body>
+
+</html>

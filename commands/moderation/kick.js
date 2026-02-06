@@ -41,6 +41,14 @@ module.exports = {
             return message.reply({ embeds: [embed] });
         }
 
+        if (message.author.id !== message.guild.ownerId) {
+            if (message.member.roles.highest.position <= userToKick.roles.highest.position) {
+                const embed = new MessageEmbed()
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you need a higher role than **${userToKick.user.tag}** to kick them.`);
+                return message.reply({ embeds: [embed] });
+            }
+        }
+
 
         const confirmEmbed = new MessageEmbed()
             .setColor(config.embedColor).setDescription(`⚠️ <@${message.author.id}>: are you sure you want to kick **${userToKick.user.tag}**? (reason: ${reason})`);

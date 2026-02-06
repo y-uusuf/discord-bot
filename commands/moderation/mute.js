@@ -43,6 +43,20 @@ module.exports = {
             return message.reply({ embeds: [embed] });
         }
 
+        if (!target.manageable) {
+            const embed = new MessageEmbed()
+                .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: i can't mute them, maybe make my role higher?`);
+            return message.reply({ embeds: [embed] });
+        }
+
+        if (message.author.id !== message.guild.ownerId) {
+            if (message.member.roles.highest.position <= target.roles.highest.position) {
+                const embed = new MessageEmbed()
+                    .setColor(config.embedColor).setDescription(`❌ <@${message.author.id}>: you need a higher role than **${target.user.tag}** to mute them.`);
+                return message.reply({ embeds: [embed] });
+            }
+        }
+
         try {
             await target.roles.add(muteRole);
             const embed = new MessageEmbed()
